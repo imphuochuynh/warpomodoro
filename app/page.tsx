@@ -9,12 +9,12 @@ const CONFIG = {
   BREAK_DURATION: 5 * 60 * 1000, // 5 minutes
 
   // Starfield settings
-  NUM_STARS: 500,
+  NUM_STARS: 600,
   IDLE_SPEED: 0.2,
   STAR_SPEED_MIN: 0.05,
   STAR_SPEED_BASE: 0.8,
   STAR_SPEED_MAX: 2.5, // Reduced for more relaxing experience
-  STAR_RESPAWN_DISTANCE: 300, // How far back stars respawn (easily editable)
+  STAR_RESPAWN_DISTANCE: 750, // How far back stars respawn (easily editable)
 
   // Animation settings
   ACCELERATION_TIME: 5 * 60 * 1000, // 5 minutes to reach max speed
@@ -405,8 +405,8 @@ export default function WarPomodoro() {
           star.z -= speed
         } else {
           // Very gentle floating motion after exit
-          star.x += (Math.random() - 0.5) * 0.1
-          star.y += (Math.random() - 0.5) * 0.1
+          star.x += (Math.random() - 0.5) * 0.02
+          star.y += (Math.random() - 0.5) * 0.02
         }
       } else {
         // Move star toward viewer
