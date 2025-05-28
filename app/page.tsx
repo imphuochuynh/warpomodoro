@@ -1,8 +1,8 @@
 "use client"
 
-import { useEffect, useRef, useState, useCallback } from "react"
+import { useState, useRef, useEffect, useCallback } from "react"
 
-// ===== CONFIGURATION =====
+// ===== CONFIG =====
 const CONFIG = {
   // Timer settings
   WORK_DURATION: 25 * 60 * 1000, // 25 minutes
@@ -32,21 +32,25 @@ const THEMES = {
     name: "WARP",
     background: "#000000",
     stars: "#f5f5f5",
+    starsSecondary: "#e0e0e0",
   },
   DRIFT: {
     name: "DRIFT",
     background: "#2d2d2d",
     stars: "#87ceeb",
+    starsSecondary: "#b0e0e6",
   },
   IONFIELD: {
     name: "IONFIELD",
-    background: "#110018",
-    stars: "#cc00a6",
+    background: "#2e2e2e",
+    stars: "#d0d0d0",
+    starsSecondary: "#ff69b4",
   },
   GHOSTLINE: {
     name: "GHOSTLINE",
-    background: "#373f4c",
-    stars: "#f7fafc",
+    background: "#2e2e2e",
+    stars: "#99ff99",
+    starsSecondary: "#66ff66",
   },
 }
 
@@ -59,6 +63,7 @@ interface Star {
   hasValidPrev: boolean
   twinkle?: number
   twinkleSpeed?: number
+  colorType?: "primary" | "secondary"
 }
 
 type TimerState = "idle" | "working" | "paused" | "workComplete" | "break" | "breakComplete"
@@ -86,85 +91,16 @@ export default function WarPomodoro() {
   const [currentTheme, setCurrentTheme] = useState<ThemeKey>("WARP")
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
 
-  // Load sessions, theme, and ambient setting from localStorage
-  useEffect(() => {
-    const savedSessions = localStorage.getItem("warpomodoro-sessions")
-    if (savedSessions) {
-      setSessions(Number.parseInt(savedSessions, 10))
+  // Helper function to convert hex to RGB
+  const hexToRgb = (hex: string): string => {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
+    if (result) {
+      return `${Number.parseInt(result[1], 16)}, ${Number.parseInt(result[2], 16)}, ${Number.parseInt(result[3], 16)}`
     }
-
-    const savedCompletedSessions = localStorage.getItem("warpomodoro-completed-sessions")
-    if (savedCompletedSessions) {
-      setCompletedSessions(Number.parseInt(savedCompletedSessions, 10))
-    }
-
-    const savedTheme = localStorage.getItem("warpomodoro-theme") as ThemeKey
-    if (savedTheme && THEMES[savedTheme]) {
-      setCurrentTheme(savedTheme)
-    }
-
-    const savedAmbient = localStorage.getItem("warpomodoro-ambient")
-    if (savedAmbient === "true") {
-      setAmbientEnabled(true)
-    }
-  }, [])
-
-  // Initialize audio
-  useEffect(() => {
-    const initAudio = () => {
-      if (!audioRef.current) {
-        audioRef.current = new Audio("/sounds/ambient.wav")
-        audioRef.current.loop = true
-        audioRef.current.volume = CONFIG.AMBIENT_VOLUME
-        audioRef.current.preload = "auto"
-      }
-    }
-
-    initAudio()
-
-    return () => {
-      if (audioRef.current) {
-        audioRef.current.pause()
-        audioRef.current.currentTime = 0
-      }
-    }
-  }, [])
-
-  // Handle ambient audio during sessions
-  useEffect(() => {
-    const playAudio = async () => {
-      if (audioRef.current && state === "working" && ambientEnabled) {
-        try {
-          audioRef.current.currentTime = 0
-          await audioRef.current.play()
-        } catch (error) {
-          console.log("Audio play failed:", error)
-        }
-      } else if (audioRef.current) {
-        audioRef.current.pause()
-      }
-    }
-
-    playAudio()
-  }, [state, ambientEnabled])
-
-  // Save ambient setting to localStorage
-  const toggleAmbient = () => {
-    const newAmbientEnabled = !ambientEnabled
-    setAmbientEnabled(newAmbientEnabled)
-    localStorage.setItem("warpomodoro-ambient", newAmbientEnabled.toString())
+    return "255, 255, 255" // fallback to white
   }
 
-  // Save theme to localStorage
-  const changeTheme = (theme: ThemeKey) => {
-    setCurrentTheme(theme)
-    localStorage.setItem("warpomodoro-theme", theme)
-  }
-
-  // Get current theme colors
-  const theme = THEMES[currentTheme]
-
-  // Initialize stars with randomization
+  // Initialize stars with randomization - defined before it's used in useEffect
   const initStars = useCallback(() => {
     const stars: Star[] = []
     for (let i = 0; i < CONFIG.NUM_STARS; i++) {
@@ -175,123 +111,13 @@ export default function WarPomodoro() {
         hasValidPrev: false,
         twinkle: Math.random() * Math.PI * 2,
         twinkleSpeed: 0.02 + Math.random() * 0.03,
+        colorType: Math.random() > 0.7 ? "secondary" : "primary", // 30% chance for secondary color
       })
     }
     starsRef.current = stars
   }, [])
 
-  // Handle break action
-  const takeBreak = useCallback(() => {
-    if (state === "working") {
-      // Store current work elapsed time
-      workElapsedRef.current = Date.now() - startTimeRef.current
-
-      // Store current speed for break transition
-      const elapsed = workElapsedRef.current
-      const progress = Math.min(elapsed / CONFIG.WORK_DURATION, 1)
-      const rampUpTime = 5000 // Very quick ramp to 5 seconds
-
-      let currentSpeed = CONFIG.STAR_SPEED_MIN
-      if (elapsed < rampUpTime) {
-        const rampProgress = elapsed / rampUpTime
-        const easedRamp = rampProgress * rampProgress * (3 - 2 * rampProgress)
-        currentSpeed = CONFIG.IDLE_SPEED + (CONFIG.STAR_SPEED_BASE - CONFIG.IDLE_SPEED) * easedRamp
-      } else {
-        const remainingProgress = (elapsed - rampUpTime) / (CONFIG.WORK_DURATION - rampUpTime)
-        const easedProgress = Math.min(remainingProgress, 1)
-        // More aggressive acceleration curve
-        const aggressiveProgress = easedProgress * easedProgress * easedProgress
-        currentSpeed = CONFIG.STAR_SPEED_BASE + (CONFIG.STAR_SPEED_MAX - CONFIG.STAR_SPEED_BASE) * aggressiveProgress
-      }
-
-      breakStartSpeedRef.current = currentSpeed
-      setState("break")
-      startTimeRef.current = Date.now()
-      setShowControls(false)
-    }
-  }, [state])
-
-  // Handle end session action (early exit - doesn't count as completed)
-  const endSession = useCallback(() => {
-    if (state === "working") {
-      setState("idle")
-      setFadeOpacity(0)
-      setShowControls(false)
-      workElapsedRef.current = 0 // Reset work elapsed time
-    }
-  }, [state])
-
-  // Touch/click event handler for canvas
-  useEffect(() => {
-    const handleTouch = (event: TouchEvent | MouseEvent) => {
-      if (state === "working") {
-        event.preventDefault()
-        // Canvas clicks no longer toggle progress - handled by toggle button
-      }
-    }
-
-    const canvas = canvasRef.current
-    if (canvas) {
-      canvas.addEventListener("touchstart", handleTouch)
-      canvas.addEventListener("click", handleTouch)
-
-      return () => {
-        canvas.removeEventListener("touchstart", handleTouch)
-        canvas.removeEventListener("click", handleTouch)
-      }
-    }
-  }, [state])
-
-  // Show controls after 5 seconds of starting work session
-  useEffect(() => {
-    if (state === "working") {
-      const controlsTimer = setTimeout(() => {
-        setShowControls(true)
-      }, 5000)
-
-      const hintTimer = setTimeout(() => {
-        setShowProgressHint(true)
-        // Hide hint after 3 seconds
-        setTimeout(() => {
-          setShowProgressHint(false)
-        }, 3000)
-      }, 5000)
-
-      return () => {
-        clearTimeout(controlsTimer)
-        clearTimeout(hintTimer)
-      }
-    } else {
-      setShowControls(false)
-      setShowProgressHint(false)
-      setControlsVisible(true) // Reset controls visibility when leaving working state
-    }
-  }, [state])
-
-  // Format time for display
-  const formatTime = (milliseconds: number) => {
-    const totalSeconds = Math.floor(milliseconds / 1000)
-    const minutes = Math.floor(totalSeconds / 60)
-    const seconds = totalSeconds % 60
-    return `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`
-  }
-
-  // Get current timer display
-  const getCurrentTime = () => {
-    if (state === "working") {
-      const currentElapsed = Date.now() - startTimeRef.current
-      const totalElapsed = workElapsedRef.current + currentElapsed
-      const remaining = Math.max(CONFIG.WORK_DURATION - totalElapsed, 0)
-      return formatTime(remaining)
-    } else if (state === "break") {
-      const elapsed = Date.now() - startTimeRef.current
-      const remaining = Math.max(CONFIG.BREAK_DURATION - elapsed, 0)
-      return formatTime(remaining)
-    }
-    return "25:00"
-  }
-
-  // Animation loop
+  // Animation loop - defined after initStars
   const animate = useCallback(() => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -305,7 +131,7 @@ export default function WarPomodoro() {
     const centerY = height / 2
 
     // Clear canvas with theme background
-    ctx.fillStyle = theme.background
+    ctx.fillStyle = THEMES[currentTheme].background
     ctx.fillRect(0, 0, width, height)
 
     const currentTime = Date.now()
@@ -379,8 +205,6 @@ export default function WarPomodoro() {
     const maxTrailLength = CONFIG.TRAIL_LENGTH_BASE + trailIntensity * CONFIG.TRAIL_LENGTH_MULTIPLIER
 
     // Update and draw stars
-    ctx.fillStyle = theme.stars
-
     starsRef.current.forEach((star) => {
       // Update twinkle animation
       if (star.twinkle !== undefined && star.twinkleSpeed !== undefined) {
@@ -419,6 +243,8 @@ export default function WarPomodoro() {
         star.y = (Math.random() - 0.5) * 2000
         star.z = Math.random() * 800 + CONFIG.STAR_RESPAWN_DISTANCE // Configurable respawn distance
         star.hasValidPrev = false
+        // Reassign color type when star respawns
+        star.colorType = Math.random() > 0.7 ? "secondary" : "primary"
       }
 
       // Project NEW 3D position to 2D
@@ -428,6 +254,10 @@ export default function WarPomodoro() {
       // Only draw if star is on screen
       if (x >= -100 && x <= width + 100 && y >= -100 && y <= height + 100) {
         const baseSize = Math.max((1 - star.z / 1000) * 3.0, 0.4)
+
+        // Get star color based on type
+        const starColor =
+          star.colorType === "secondary" ? THEMES[currentTheme].starsSecondary : THEMES[currentTheme].stars
 
         // Calculate twinkling effect for workComplete state
         let size = baseSize
@@ -458,26 +288,17 @@ export default function WarPomodoro() {
             const baseOpacity = Math.min(speed / 8, 0.95)
 
             // Parse star color for gradient
-            const starColor =
-              theme.stars === "#f5f5f5"
-                ? "245, 245, 245"
-                : theme.stars === "#87ceeb"
-                  ? "135, 206, 235"
-                  : theme.stars === "#00ffff"
-                    ? "0, 255, 255"
-                    : theme.stars === "#f7fafc"
-                      ? "247, 250, 252"
-                      : "245, 245, 245"
+            const starColorRgb = hexToRgb(starColor)
 
             if (isExitingWarp) {
               // During exit, trails fade more dramatically
               const exitProgress = Math.min(elapsed / CONFIG.EXIT_ANIMATION_TIME, 1)
               const exitFade = 1 - exitProgress * 0.7
-              gradient.addColorStop(0, `rgba(${starColor}, ${baseOpacity * 0.1 * exitFade})`)
-              gradient.addColorStop(1, `rgba(${starColor}, ${baseOpacity * exitFade})`)
+              gradient.addColorStop(0, `rgba(${starColorRgb}, ${baseOpacity * 0.1 * exitFade})`)
+              gradient.addColorStop(1, `rgba(${starColorRgb}, ${baseOpacity * exitFade})`)
             } else {
-              gradient.addColorStop(0, `rgba(${starColor}, ${baseOpacity * 0.1})`)
-              gradient.addColorStop(1, `rgba(${starColor}, ${baseOpacity})`)
+              gradient.addColorStop(0, `rgba(${starColorRgb}, ${baseOpacity * 0.1})`)
+              gradient.addColorStop(1, `rgba(${starColorRgb}, ${baseOpacity})`)
             }
 
             ctx.strokeStyle = gradient
@@ -489,7 +310,7 @@ export default function WarPomodoro() {
         // Draw the star dot
         ctx.beginPath()
         ctx.arc(x, y, size, 0, Math.PI * 2)
-        ctx.fillStyle = `${theme.stars}${Math.floor(opacity * 255)
+        ctx.fillStyle = `${starColor}${Math.floor(opacity * 255)
           .toString(16)
           .padStart(2, "0")}`
         ctx.fill()
@@ -517,16 +338,236 @@ export default function WarPomodoro() {
     }
 
     animationRef.current = requestAnimationFrame(animate)
-  }, [state, completedSessions, theme])
+  }, [state, completedSessions, currentTheme])
 
-  // Handle canvas resize
-  const resizeCanvas = useCallback(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
+  // Load sessions, theme, and ambient setting from localStorage
+  useEffect(() => {
+    const savedSessions = localStorage.getItem("warpomodoro-sessions")
+    if (savedSessions) {
+      setSessions(Number.parseInt(savedSessions, 10))
+    }
 
-    canvas.width = window.innerWidth
-    canvas.height = window.innerHeight
+    const savedCompletedSessions = localStorage.getItem("warpomodoro-completed-sessions")
+    if (savedCompletedSessions) {
+      setCompletedSessions(Number.parseInt(savedCompletedSessions, 10))
+    }
+
+    const savedTheme = localStorage.getItem("warpomodoro-theme") as ThemeKey
+    if (savedTheme && THEMES[savedTheme]) {
+      setCurrentTheme(savedTheme)
+    }
+
+    const savedAmbient = localStorage.getItem("warpomodoro-ambient")
+    if (savedAmbient === "true") {
+      setAmbientEnabled(true)
+    }
   }, [])
+
+  // Initialize audio
+  useEffect(() => {
+    const initAudio = () => {
+      if (!audioRef.current) {
+        audioRef.current = new Audio("/sounds/ambient.wav")
+        audioRef.current.loop = true
+        audioRef.current.volume = CONFIG.AMBIENT_VOLUME
+        audioRef.current.preload = "auto"
+      }
+    }
+
+    initAudio()
+
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause()
+        audioRef.current.currentTime = 0
+      }
+    }
+  }, [])
+
+  // Handle ambient audio during sessions
+  useEffect(() => {
+    const playAudio = async () => {
+      if (audioRef.current && state === "working" && ambientEnabled) {
+        try {
+          audioRef.current.currentTime = 0
+          await audioRef.current.play()
+        } catch (error) {
+          console.log("Audio play failed:", error)
+        }
+      } else if (audioRef.current) {
+        audioRef.current.pause()
+      }
+    }
+
+    playAudio()
+  }, [state, ambientEnabled])
+
+  // Show controls after 5 seconds of starting work session
+  useEffect(() => {
+    if (state === "working") {
+      const controlsTimer = setTimeout(() => {
+        setShowControls(true)
+      }, 5000)
+
+      const hintTimer = setTimeout(() => {
+        setShowProgressHint(true)
+        // Hide hint after 3 seconds
+        setTimeout(() => {
+          setShowProgressHint(false)
+        }, 3000)
+      }, 5000)
+
+      return () => {
+        clearTimeout(controlsTimer)
+        clearTimeout(hintTimer)
+      }
+    } else {
+      setShowControls(false)
+      setShowProgressHint(false)
+      setControlsVisible(true) // Reset controls visibility when leaving working state
+    }
+  }, [state])
+
+  // Initialize stars and set up canvas
+  useEffect(() => {
+    initStars()
+
+    const handleResize = () => {
+      if (canvasRef.current) {
+        canvasRef.current.width = window.innerWidth
+        canvasRef.current.height = window.innerHeight
+      }
+    }
+
+    handleResize()
+    window.addEventListener("resize", handleResize)
+
+    return () => {
+      window.removeEventListener("resize", handleResize)
+    }
+  }, [initStars])
+
+  // Touch/click event handler for canvas
+  useEffect(() => {
+    const handleTouch = (event: TouchEvent | MouseEvent) => {
+      if (state === "working") {
+        event.preventDefault()
+        // Canvas clicks no longer toggle progress - handled by toggle button
+      }
+    }
+
+    const canvas = canvasRef.current
+    if (canvas) {
+      canvas.addEventListener("touchstart", handleTouch)
+      canvas.addEventListener("click", handleTouch)
+
+      return () => {
+        canvas.removeEventListener("touchstart", handleTouch)
+        canvas.removeEventListener("click", handleTouch)
+      }
+    }
+  }, [state])
+
+  // Start animation
+  useEffect(() => {
+    animationRef.current = requestAnimationFrame(animate)
+
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current)
+      }
+    }
+  }, [animate])
+
+  // Save ambient setting to localStorage
+  const toggleAmbient = () => {
+    const newAmbientEnabled = !ambientEnabled
+    setAmbientEnabled(newAmbientEnabled)
+    localStorage.setItem("warpomodoro-ambient", newAmbientEnabled.toString())
+  }
+
+  // Save theme to localStorage
+  const changeTheme = (theme: ThemeKey) => {
+    setCurrentTheme(theme)
+    localStorage.setItem("warpomodoro-theme", theme)
+  }
+
+  // Handle break action
+  const takeBreak = useCallback(() => {
+    if (state === "working") {
+      // Store current work elapsed time
+      workElapsedRef.current = Date.now() - startTimeRef.current
+
+      // Store current speed for break transition
+      const elapsed = workElapsedRef.current
+      const progress = Math.min(elapsed / CONFIG.WORK_DURATION, 1)
+      const rampUpTime = 5000 // Very quick ramp to 5 seconds
+
+      let currentSpeed = CONFIG.STAR_SPEED_MIN
+      if (elapsed < rampUpTime) {
+        const rampProgress = elapsed / rampUpTime
+        const easedRamp = rampProgress * rampProgress * (3 - 2 * rampProgress)
+        currentSpeed = CONFIG.IDLE_SPEED + (CONFIG.STAR_SPEED_BASE - CONFIG.IDLE_SPEED) * easedRamp
+      } else {
+        const remainingProgress = (elapsed - rampUpTime) / (CONFIG.WORK_DURATION - rampUpTime)
+        const easedProgress = Math.min(remainingProgress, 1)
+        // More aggressive acceleration curve
+        const aggressiveProgress = easedProgress * easedProgress * easedProgress
+        currentSpeed = CONFIG.STAR_SPEED_BASE + (CONFIG.STAR_SPEED_MAX - CONFIG.STAR_SPEED_BASE) * aggressiveProgress
+      }
+
+      breakStartSpeedRef.current = currentSpeed
+      setState("break")
+      startTimeRef.current = Date.now()
+      setShowControls(false)
+    }
+  }, [state])
+
+  // Handle end session action (early exit - doesn't count as completed)
+  const endSession = useCallback(() => {
+    if (state === "working") {
+      setState("idle")
+      setFadeOpacity(0)
+      setShowControls(false)
+      workElapsedRef.current = 0 // Reset work elapsed time
+    }
+  }, [state])
+
+  // Format time for display
+  const formatTime = (milliseconds: number) => {
+    const totalSeconds = Math.floor(milliseconds / 1000)
+    const minutes = Math.floor(totalSeconds / 60)
+    const seconds = totalSeconds % 60
+    return `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`
+  }
+
+  // Get current timer display
+  const getCurrentTime = () => {
+    if (state === "working") {
+      const currentElapsed = Date.now() - startTimeRef.current
+      const totalElapsed = workElapsedRef.current + currentElapsed
+      const remaining = Math.max(CONFIG.WORK_DURATION - totalElapsed, 0)
+      return formatTime(remaining)
+    } else if (state === "break") {
+      const elapsed = Date.now() - startTimeRef.current
+      const remaining = Math.max(CONFIG.BREAK_DURATION - elapsed, 0)
+      return formatTime(remaining)
+    }
+    return "25:00"
+  }
+
+  // Calculate progress percentage
+  const getProgress = () => {
+    if (state === "working") {
+      const currentElapsed = Date.now() - startTimeRef.current
+      const totalElapsed = workElapsedRef.current + currentElapsed
+      return Math.min((totalElapsed / CONFIG.WORK_DURATION) * 100, 100)
+    } else if (state === "break") {
+      const elapsed = Date.now() - startTimeRef.current
+      return Math.min((elapsed / CONFIG.BREAK_DURATION) * 100, 100)
+    }
+    return 0
+  }
 
   // Start work session
   const startWork = () => {
@@ -568,39 +609,6 @@ export default function WarPomodoro() {
     workElapsedRef.current = 0 // Reset work elapsed time
   }
 
-  // Calculate progress percentage
-  const getProgress = () => {
-    if (state === "working") {
-      const currentElapsed = Date.now() - startTimeRef.current
-      const totalElapsed = workElapsedRef.current + currentElapsed
-      return Math.min((totalElapsed / CONFIG.WORK_DURATION) * 100, 100)
-    } else if (state === "break") {
-      const elapsed = Date.now() - startTimeRef.current
-      return Math.min((elapsed / CONFIG.BREAK_DURATION) * 100, 100)
-    }
-    return 0
-  }
-
-  // Setup
-  useEffect(() => {
-    initStars()
-    resizeCanvas()
-
-    window.addEventListener("resize", resizeCanvas)
-    return () => window.removeEventListener("resize", resizeCanvas)
-  }, [initStars, resizeCanvas])
-
-  // Start animation
-  useEffect(() => {
-    animationRef.current = requestAnimationFrame(animate)
-
-    return () => {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current)
-      }
-    }
-  }, [animate])
-
   const getButtonText = () => {
     switch (state) {
       case "idle":
@@ -631,6 +639,9 @@ export default function WarPomodoro() {
   const showButton = state === "idle" || state === "workComplete" || state === "breakComplete"
   const showMessage = state === "workComplete"
 
+  // Get current theme colors
+  const theme = THEMES[currentTheme]
+
   return (
     <div className="relative w-screen h-screen overflow-hidden" style={{ backgroundColor: theme.background }}>
       <canvas ref={canvasRef} className="absolute inset-0" style={{ display: "block" }} />
@@ -641,16 +652,18 @@ export default function WarPomodoro() {
           {/* Controls Toggle */}
           <div
             className="flex items-center gap-2 border px-2 py-1 group relative"
-            style={{ 
+            style={{
               backgroundColor: theme.stars,
-              borderColor: theme.stars
+              borderColor: theme.stars,
             }}
             onMouseMove={(e) => {
               const rect = e.currentTarget.getBoundingClientRect()
               setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top })
             }}
           >
-            <span className="font-mono text-xs uppercase opacity-70" style={{ color: theme.background }}>CTRL</span>
+            <span className="font-mono text-xs uppercase opacity-70" style={{ color: theme.background }}>
+              CTRL
+            </span>
             <button
               onClick={() => setControlsVisible(!controlsVisible)}
               className="w-5 h-2 border relative"
@@ -686,16 +699,18 @@ export default function WarPomodoro() {
           {/* Progress Toggle */}
           <div
             className="flex items-center gap-2 border px-2 py-1 group relative"
-            style={{ 
+            style={{
               backgroundColor: theme.stars,
-              borderColor: theme.stars
+              borderColor: theme.stars,
             }}
             onMouseMove={(e) => {
               const rect = e.currentTarget.getBoundingClientRect()
               setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top })
             }}
           >
-            <span className="font-mono text-xs uppercase opacity-70" style={{ color: theme.background }}>PROG</span>
+            <span className="font-mono text-xs uppercase opacity-70" style={{ color: theme.background }}>
+              PROG
+            </span>
             <button
               onClick={() => setShowProgress(!showProgress)}
               className="w-5 h-2 border relative"
@@ -731,16 +746,18 @@ export default function WarPomodoro() {
           {/* Ambient Toggle */}
           <div
             className="flex items-center gap-2 border px-2 py-1 group relative"
-            style={{ 
+            style={{
               backgroundColor: theme.stars,
-              borderColor: theme.stars
+              borderColor: theme.stars,
             }}
             onMouseMove={(e) => {
               const rect = e.currentTarget.getBoundingClientRect()
               setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top })
             }}
           >
-            <span className="font-mono text-xs uppercase opacity-70" style={{ color: theme.background }}>AMBT</span>
+            <span className="font-mono text-xs uppercase opacity-70" style={{ color: theme.background }}>
+              AMBT
+            </span>
             <button
               onClick={toggleAmbient}
               className="w-5 h-2 border relative"
