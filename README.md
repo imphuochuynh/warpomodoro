@@ -2,8 +2,6 @@
 
 A minimal, fullscreen Pomodoro timer that replaces numbers with words and time with motion. Experience focus through an immersive starfield that accelerates as your session progresses, creating a unique "warp speed" visualization of your productivity.
 
-![WARPOMODORO Screenshot](https://sjc.microlink.io/I5SkbuFFkC9g8uZqZwgG752A7k7mGkXYij0wcPKNwSTe8ouVulOIdy3zUJ739vwyC8SWjT9xgVzsIor5qi1ipw.jpeg)
-
 ## Features
 
 ### 🌌 **Immersive Starfield Animation**
