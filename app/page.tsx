@@ -24,33 +24,40 @@ const CONFIG = {
 
   // Audio settings
   AMBIENT_VOLUME: 0.2, // Easily editable ambient sound volume (0.0 to 1.0)
+  AUDIO_FADE_DURATION: 1.5, // Fade duration in seconds
 }
 
 // ===== THEMES =====
 const THEMES = {
-  WARP: {
-    name: "WARP",
+  CORE: {
+    name: "CORE",
     background: "#000000",
     stars: "#f5f5f5",
     starsSecondary: "#e0e0e0",
   },
-  DRIFT: {
-    name: "DRIFT",
+  SOFTLINE: {
+    name: "SOFTLINE",
     background: "#2d2d2d",
     stars: "#87ceeb",
     starsSecondary: "#b0e0e6",
   },
-  IONFIELD: {
-    name: "IONFIELD",
+  GLINT: {
+    name: "GLINT",
     background: "#2e2e2e",
     stars: "#d0d0d0",
     starsSecondary: "#ff69b4",
   },
-  GHOSTLINE: {
-    name: "GHOSTLINE",
+  STATIC: {
+    name: "STATIC",
     background: "#2e2e2e",
     stars: "#99ff99",
     starsSecondary: "#66ff66",
+  },
+  FOG: {
+    name: "FOG",
+    background: "#2e2e2e",
+    stars: "#d0d0d0",
+    starsSecondary: "#999999",
   },
 }
 
@@ -78,6 +85,9 @@ export default function WarPomodoro() {
   const breakStartSpeedRef = useRef<number>(0)
   const workElapsedRef = useRef<number>(0) // Track work session elapsed time
   const audioRef = useRef<HTMLAudioElement | null>(null)
+  const audioContextRef = useRef<AudioContext | null>(null)
+  const audioSourceRef = useRef<MediaElementAudioSourceNode | null>(null)
+  const audioGainRef = useRef<GainNode | null>(null)
 
   const [state, setState] = useState<TimerState>("idle")
   const [sessions, setSessions] = useState(0)
@@ -88,7 +98,7 @@ export default function WarPomodoro() {
   const [showProgressHint, setShowProgressHint] = useState(false)
   const [controlsVisible, setControlsVisible] = useState(true)
   const [ambientEnabled, setAmbientEnabled] = useState(false)
-  const [currentTheme, setCurrentTheme] = useState<ThemeKey>("WARP")
+  const [currentTheme, setCurrentTheme] = useState<ThemeKey>("CORE")
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
 
   // Helper function to convert hex to RGB
@@ -117,6 +127,42 @@ export default function WarPomodoro() {
     starsRef.current = stars
   }, [])
 
+  // Audio fade-out function
+  const fadeOutAudio = useCallback(
+    (audio: HTMLAudioElement | null) => {
+      if (!audio || !ambientEnabled) return
+
+      // If we have Web Audio API set up
+      if (audioContextRef.current && audioGainRef.current) {
+        const now = audioContextRef.current.currentTime
+        audioGainRef.current.gain.setValueAtTime(audioGainRef.current.gain.value, now)
+        audioGainRef.current.gain.linearRampToValueAtTime(0, now + CONFIG.AUDIO_FADE_DURATION)
+
+        // Stop the audio after fade completes
+        setTimeout(() => {
+          if (audio) {
+            audio.pause()
+            audio.currentTime = 0
+          }
+        }, CONFIG.AUDIO_FADE_DURATION * 1000)
+      } else {
+        // Fallback for browsers without Web Audio API
+        let volume = audio.volume
+        const fadeInterval = setInterval(() => {
+          volume = Math.max(0, volume - 0.05)
+          audio.volume = volume
+
+          if (volume <= 0) {
+            clearInterval(fadeInterval)
+            audio.pause()
+            audio.currentTime = 0
+          }
+        }, 100)
+      }
+    },
+    [ambientEnabled],
+  )
+
   // Animation loop - defined after initStars
   const animate = useCallback(() => {
     const canvas = canvasRef.current
@@ -130,12 +176,16 @@ export default function WarPomodoro() {
     const centerX = width / 2
     const centerY = height / 2
 
+    // Get current theme safely
+    const theme = THEMES[currentTheme] || THEMES.CORE
+
     // Clear canvas with theme background
-    ctx.fillStyle = THEMES[currentTheme].background
+    ctx.fillStyle = theme.background
     ctx.fillRect(0, 0, width, height)
 
     const currentTime = Date.now()
     const elapsed = currentTime - startTimeRef.current
+    const time = currentTime / 1000 // Current time in seconds for smooth animations
 
     let speed = CONFIG.STAR_SPEED_MIN
     let isExitingWarp = false
@@ -168,6 +218,11 @@ export default function WarPomodoro() {
         setCompletedSessions(newCompletedSessions)
         localStorage.setItem("warpomodoro-completed-sessions", newCompletedSessions.toString())
         workElapsedRef.current = 0
+
+        // Fade out audio if enabled
+        if (ambientEnabled) {
+          fadeOutAudio(audioRef.current)
+        }
       }
     } else if (state === "workComplete") {
       // Keep moving slowly and add twinkling
@@ -228,9 +283,8 @@ export default function WarPomodoro() {
           star.y += deltaY * collapseForce * 0.01
           star.z -= speed
         } else {
-          // Very gentle floating motion after exit
-          star.x += (Math.random() - 0.5) * 0.02
-          star.y += (Math.random() - 0.5) * 0.02
+          // Stars remain stationary during break - no drift motion
+          // Do nothing - stars stay in their current positions
         }
       } else {
         // Move star toward viewer
@@ -256,8 +310,7 @@ export default function WarPomodoro() {
         const baseSize = Math.max((1 - star.z / 1000) * 3.0, 0.4)
 
         // Get star color based on type
-        const starColor =
-          star.colorType === "secondary" ? THEMES[currentTheme].starsSecondary : THEMES[currentTheme].stars
+        const starColor = star.colorType === "secondary" ? theme.starsSecondary : theme.stars
 
         // Calculate twinkling effect for workComplete state
         let size = baseSize
@@ -338,7 +391,7 @@ export default function WarPomodoro() {
     }
 
     animationRef.current = requestAnimationFrame(animate)
-  }, [state, completedSessions, currentTheme])
+  }, [state, completedSessions, currentTheme, fadeOutAudio])
 
   // Load sessions, theme, and ambient setting from localStorage
   useEffect(() => {
@@ -353,6 +406,7 @@ export default function WarPomodoro() {
     }
 
     const savedTheme = localStorage.getItem("warpomodoro-theme") as ThemeKey
+    // Only set the theme if it exists in our THEMES object
     if (savedTheme && THEMES[savedTheme]) {
       setCurrentTheme(savedTheme)
     }
@@ -363,7 +417,7 @@ export default function WarPomodoro() {
     }
   }, [])
 
-  // Initialize audio
+  // Initialize audio with Web Audio API for better control
   useEffect(() => {
     const initAudio = () => {
       if (!audioRef.current) {
@@ -371,6 +425,25 @@ export default function WarPomodoro() {
         audioRef.current.loop = true
         audioRef.current.volume = CONFIG.AMBIENT_VOLUME
         audioRef.current.preload = "auto"
+
+        // Set up Web Audio API for better control over audio
+        try {
+          const AudioContext = window.AudioContext || (window as any).webkitAudioContext
+          if (AudioContext) {
+            audioContextRef.current = new AudioContext()
+            audioSourceRef.current = audioContextRef.current.createMediaElementSource(audioRef.current)
+            audioGainRef.current = audioContextRef.current.createGain()
+
+            // Connect nodes
+            audioSourceRef.current.connect(audioGainRef.current)
+            audioGainRef.current.connect(audioContextRef.current.destination)
+
+            // Set initial gain
+            audioGainRef.current.gain.value = CONFIG.AMBIENT_VOLUME
+          }
+        } catch (e) {
+          console.log("Web Audio API not supported, falling back to standard audio")
+        }
       }
     }
 
@@ -378,50 +451,52 @@ export default function WarPomodoro() {
 
     return () => {
       if (audioRef.current) {
-        audioRef.current.pause()
-        audioRef.current.currentTime = 0
+        fadeOutAudio(audioRef.current)
+      }
+
+      // Clean up Web Audio API
+      if (audioContextRef.current && audioContextRef.current.state !== "closed") {
+        audioContextRef.current.close()
       }
     }
-  }, [])
+  }, [fadeOutAudio])
 
   // Handle ambient audio during sessions
   useEffect(() => {
     const playAudio = async () => {
       if (audioRef.current && state === "working" && ambientEnabled) {
         try {
+          // Resume AudioContext if it's suspended (browser autoplay policy)
+          if (audioContextRef.current && audioContextRef.current.state === "suspended") {
+            await audioContextRef.current.resume()
+          }
+
+          // Set gain to full volume
+          if (audioGainRef.current) {
+            audioGainRef.current.gain.value = CONFIG.AMBIENT_VOLUME
+          } else {
+            audioRef.current.volume = CONFIG.AMBIENT_VOLUME
+          }
+
           audioRef.current.currentTime = 0
           await audioRef.current.play()
         } catch (error) {
           console.log("Audio play failed:", error)
         }
-      } else if (audioRef.current) {
-        audioRef.current.pause()
+      } else if (audioRef.current && state !== "working") {
+        // Only fade out if we're not in working state
+        if (ambientEnabled && audioRef.current.paused === false) {
+          fadeOutAudio(audioRef.current)
+        }
       }
     }
 
     playAudio()
-  }, [state, ambientEnabled])
+  }, [state, ambientEnabled, fadeOutAudio])
 
-  // Show controls after 5 seconds of starting work session
+  // Reset controls visibility when leaving working state
   useEffect(() => {
-    if (state === "working") {
-      const controlsTimer = setTimeout(() => {
-        setShowControls(true)
-      }, 5000)
-
-      const hintTimer = setTimeout(() => {
-        setShowProgressHint(true)
-        // Hide hint after 3 seconds
-        setTimeout(() => {
-          setShowProgressHint(false)
-        }, 3000)
-      }, 5000)
-
-      return () => {
-        clearTimeout(controlsTimer)
-        clearTimeout(hintTimer)
-      }
-    } else {
+    if (state !== "working") {
       setShowControls(false)
       setShowProgressHint(false)
       setControlsVisible(true) // Reset controls visibility when leaving working state
@@ -488,8 +563,10 @@ export default function WarPomodoro() {
 
   // Save theme to localStorage
   const changeTheme = (theme: ThemeKey) => {
-    setCurrentTheme(theme)
-    localStorage.setItem("warpomodoro-theme", theme)
+    if (THEMES[theme]) {
+      setCurrentTheme(theme)
+      localStorage.setItem("warpomodoro-theme", theme)
+    }
   }
 
   // Handle break action
@@ -520,8 +597,13 @@ export default function WarPomodoro() {
       setState("break")
       startTimeRef.current = Date.now()
       setShowControls(false)
+
+      // Fade out audio if enabled
+      if (ambientEnabled) {
+        fadeOutAudio(audioRef.current)
+      }
     }
-  }, [state])
+  }, [state, ambientEnabled, fadeOutAudio])
 
   // Handle end session action (early exit - doesn't count as completed)
   const endSession = useCallback(() => {
@@ -530,8 +612,13 @@ export default function WarPomodoro() {
       setFadeOpacity(0)
       setShowControls(false)
       workElapsedRef.current = 0 // Reset work elapsed time
+
+      // Fade out audio if enabled
+      if (ambientEnabled) {
+        fadeOutAudio(audioRef.current)
+      }
     }
-  }, [state])
+  }, [state, ambientEnabled, fadeOutAudio])
 
   // Format time for display
   const formatTime = (milliseconds: number) => {
@@ -549,8 +636,9 @@ export default function WarPomodoro() {
       const remaining = Math.max(CONFIG.WORK_DURATION - totalElapsed, 0)
       return formatTime(remaining)
     } else if (state === "break") {
-      const elapsed = Date.now() - startTimeRef.current
-      const remaining = Math.max(CONFIG.BREAK_DURATION - elapsed, 0)
+      // Show paused work session time during break
+      const totalElapsed = workElapsedRef.current
+      const remaining = Math.max(CONFIG.WORK_DURATION - totalElapsed, 0)
       return formatTime(remaining)
     }
     return "25:00"
@@ -563,8 +651,9 @@ export default function WarPomodoro() {
       const totalElapsed = workElapsedRef.current + currentElapsed
       return Math.min((totalElapsed / CONFIG.WORK_DURATION) * 100, 100)
     } else if (state === "break") {
-      const elapsed = Date.now() - startTimeRef.current
-      return Math.min((elapsed / CONFIG.BREAK_DURATION) * 100, 100)
+      // Show paused work session progress during break
+      const totalElapsed = workElapsedRef.current
+      return Math.min((totalElapsed / CONFIG.WORK_DURATION) * 100, 100)
     }
     return 0
   }
@@ -574,9 +663,10 @@ export default function WarPomodoro() {
     setState("working")
     startTimeRef.current = Date.now()
     setFadeOpacity(0)
-    setShowControls(false)
+    setShowControls(true) // Show controls immediately
     setShowProgressHint(false)
     setControlsVisible(true)
+    setShowProgress(true) // Show progress by default
     workElapsedRef.current = 0 // Reset for new session
   }
 
@@ -585,7 +675,7 @@ export default function WarPomodoro() {
     setState("working")
     startTimeRef.current = Date.now()
     setFadeOpacity(0)
-    setShowControls(false)
+    setShowControls(true) // Show controls immediately
     setShowProgressHint(false)
     setControlsVisible(true)
   }
@@ -639,8 +729,26 @@ export default function WarPomodoro() {
   const showButton = state === "idle" || state === "workComplete" || state === "breakComplete"
   const showMessage = state === "workComplete"
 
-  // Get current theme colors
-  const theme = THEMES[currentTheme]
+  // Get current theme colors safely
+  const theme = THEMES[currentTheme] || THEMES.CORE
+
+  // Update timer display every second
+  useEffect(() => {
+    let interval: NodeJS.Timeout
+
+    if (state === "working" || state === "break") {
+      interval = setInterval(() => {
+        // Force re-render to update timer display
+        setMousePos((prev) => ({ ...prev }))
+      }, 1000)
+    }
+
+    return () => {
+      if (interval) {
+        clearInterval(interval)
+      }
+    }
+  }, [state])
 
   return (
     <div className="relative w-screen h-screen overflow-hidden" style={{ backgroundColor: theme.background }}>
@@ -917,7 +1025,7 @@ export default function WarPomodoro() {
                   color: theme.background,
                 }}
               >
-                TAKE A SHORT BREAK. YOUR SESSION IS STILL STAY ACTIVE
+                TAKE A SHORT BREAK. YOUR SESSION STAYS ACTIVE
               </div>
             </button>
             <button
