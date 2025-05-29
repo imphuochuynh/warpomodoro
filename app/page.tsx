@@ -469,13 +469,15 @@ export default function WarPomodoro() {
   // Handle ambient audio during sessions
   useEffect(() => {
     const playAudio = async () => {
-      if (audioRef.current && state === "working" && ambientEnabled) {
-        try {
-          // Resume AudioContext if it's suspended (browser autoplay policy)
-          if (audioContextRef.current && audioContextRef.current.state === "suspended") {
-            await audioContextRef.current.resume()
-          }
+      if (!audioRef.current) return
 
+      try {
+        // Resume AudioContext if it's suspended
+        if (audioContextRef.current && audioContextRef.current.state === "suspended") {
+          await audioContextRef.current.resume()
+        }
+
+        if (state === "working" && ambientEnabled) {
           // Set gain to full volume
           if (audioGainRef.current) {
             audioGainRef.current.gain.value = CONFIG.AMBIENT_VOLUME
@@ -489,11 +491,13 @@ export default function WarPomodoro() {
             try {
               const playPromise = audioRef.current.play()
               if (playPromise !== undefined) {
-                playPromise.catch(error => {
+                playPromise.catch((error: Error) => {
                   console.log("Playback failed:", error)
                   // If autoplay fails, try to play on next user interaction
                   document.addEventListener('click', () => {
-                    audioRef.current?.play()
+                    if (audioRef.current && ambientEnabled) {
+                      audioRef.current.play()
+                    }
                   }, { once: true })
                 })
               }
@@ -501,14 +505,12 @@ export default function WarPomodoro() {
               console.log("Audio play failed:", error)
             }
           }
-        } catch (error) {
-          console.log("Audio play failed:", error)
-        }
-      } else if (audioRef.current && state !== "working") {
-        // Only fade out if we're not in working state
-        if (ambientEnabled && !audioRef.current.paused) {
+        } else if (!ambientEnabled || state !== "working") {
+          // Fade out if we're not in working state or ambient is disabled
           fadeOutAudio(audioRef.current)
         }
+      } catch (error) {
+        console.log("Audio handling failed:", error)
       }
     }
 
@@ -519,7 +521,15 @@ export default function WarPomodoro() {
   useEffect(() => {
     const unlockAudio = async () => {
       if (audioContextRef.current && audioContextRef.current.state === "suspended") {
-        await audioContextRef.current.resume()
+        try {
+          await audioContextRef.current.resume()
+          // If ambient is enabled and we're in working state, start playing
+          if (ambientEnabled && state === "working" && audioRef.current) {
+            audioRef.current.play()
+          }
+        } catch (error) {
+          console.log("Audio unlock failed:", error)
+        }
       }
     }
 
@@ -528,7 +538,7 @@ export default function WarPomodoro() {
     return () => {
       document.removeEventListener('click', unlockAudio)
     }
-  }, [])
+  }, [state, ambientEnabled])
 
   // Reset controls visibility when leaving working state
   useEffect(() => {
@@ -597,9 +607,9 @@ export default function WarPomodoro() {
     localStorage.setItem("warpomodoro-ambient", newAmbientEnabled.toString())
 
     if (audioRef.current) {
-      if (newAmbientEnabled && state === "working") {
-        // Resume audio if we're in a working state
-        try {
+      try {
+        if (newAmbientEnabled && state === "working") {
+          // Resume audio if we're in a working state
           if (audioContextRef.current && audioContextRef.current.state === "suspended") {
             await audioContextRef.current.resume()
           }
@@ -616,17 +626,17 @@ export default function WarPomodoro() {
             audioRef.current.currentTime = 0
             const playPromise = audioRef.current.play()
             if (playPromise !== undefined) {
-              playPromise.catch(error => {
+              playPromise.catch((error: Error) => {
                 console.log("Playback failed:", error)
               })
             }
           }
-        } catch (error) {
-          console.log("Audio resume failed:", error)
+        } else if (!newAmbientEnabled) {
+          // Fade out audio if we're turning it off
+          fadeOutAudio(audioRef.current)
         }
-      } else if (!newAmbientEnabled) {
-        // Fade out audio if we're turning it off
-        fadeOutAudio(audioRef.current)
+      } catch (error) {
+        console.log("Audio toggle failed:", error)
       }
     }
   }
