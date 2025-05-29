@@ -23,7 +23,7 @@ const CONFIG = {
   TRAIL_LENGTH_MULTIPLIER: 300,
 
   // Audio settings
-  AMBIENT_VOLUME: 0.2, // Easily editable ambient sound volume (0.0 to 1.0)
+  AMBIENT_VOLUME: 0.8, // Easily editable ambient sound volume (0.0 to 1.0)
   AUDIO_FADE_DURATION: 1.5, // Fade duration in seconds
 }
 
