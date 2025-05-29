@@ -1139,11 +1139,11 @@ export default function WarPomodoro() {
                   >
                     Warpomodoro started as a weekend side project. I had the idea, and AI helped me build it.
 
-                    "I've always loved sci-fi — the quiet before a hyperspace jump, the hum of old tech. I wanted a timer that felt like that. Not numbers. Just motion.
+                    I've always loved sci-fi — the quiet before a hyperspace jump, the hum of old tech. I wanted a timer that felt like that. Not numbers. Just motion.
 
                     It runs for 25 minutes. The stars drift, then speed up. When it ends, everything snaps back like dropping out of warp.
 
-                    There's sound, themes, and even an optional progress bar if you need it. But mostly, it's just a focus tool that doesn't feel like a timer."
+                    There's sound, themes, and even an optional progress bar if you need it. But mostly, it's just a focus tool that doesn't feel like a timer.
                   </div>
                 </div>
               </div>
