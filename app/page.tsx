@@ -102,6 +102,7 @@ export default function WarPomodoro() {
   const [currentTheme, setCurrentTheme] = useState<ThemeKey>("CORE")
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
   const [cruiseMode, setCruiseMode] = useState(false) // New state for cruise mode
+  const [showHUD, setShowHUD] = useState(false) // New state for HUD visibility
 
   // Helper function to convert hex to RGB
   const hexToRgb = (hex: string): string => {
@@ -940,6 +941,53 @@ export default function WarPomodoro() {
               </div>
             </div>
           )}
+
+          {/* HUD Toggle */}
+          <div
+            className="flex items-center gap-2 border px-2 py-1 group relative"
+            style={{
+              backgroundColor: theme.stars,
+              borderColor: theme.stars,
+            }}
+            onMouseMove={(e) => {
+              const rect = e.currentTarget.getBoundingClientRect()
+              setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top })
+            }}
+          >
+            <span className="font-mono text-xs uppercase opacity-70" style={{ color: theme.background }}>
+              HUD
+            </span>
+            <button
+              onClick={() => setShowHUD(!showHUD)}
+              className="w-5 h-2 border relative"
+              style={{
+                backgroundColor: theme.background,
+                borderColor: theme.background,
+              }}
+            >
+              <div
+                className={`absolute top-0 w-1.5 h-2 transition-all duration-200`}
+                style={{
+                  backgroundColor: theme.stars,
+                  left: showHUD ? "10px" : "2px",
+                }}
+              />
+            </button>
+            {/* Hover tooltip */}
+            <div
+              className="absolute font-mono opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50 text-xs px-2 py-1"
+              style={{
+                left: `${mousePos.x}px`,
+                top: `${mousePos.y - 30}px`,
+                transform: "translate(-50%, 0)",
+                fontSize: "9px",
+                backgroundColor: theme.stars,
+                color: theme.background,
+              }}
+            >
+              SHOW/HIDE HUD
+            </div>
+          </div>
         </div>
       )}
 
@@ -1221,6 +1269,89 @@ export default function WarPomodoro() {
                 width: `${getProgress()}%`,
                 backgroundColor: theme.stars,
               }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* HUD Overlay */}
+      {showHUD && (
+        <div className="absolute inset-0 pointer-events-none">
+          {/* Central Crosshair */}
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+            {/* Outer Ring */}
+            <div
+              className="absolute w-32 h-32 border rounded-full animate-pulse"
+              style={{
+                borderColor: `${theme.stars}40`,
+                animationDuration: '4s',
+              }}
+            />
+            {/* Inner Ring */}
+            <div
+              className="absolute w-16 h-16 border rounded-full animate-pulse"
+              style={{
+                borderColor: `${theme.stars}40`,
+                animationDuration: '2s',
+                animationDelay: '1s',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+              }}
+            />
+            {/* Crosshair Lines */}
+            <div
+              className="absolute w-8 h-8"
+              style={{
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+              }}
+            >
+              <div
+                className="absolute w-full h-px"
+                style={{ backgroundColor: `${theme.stars}40`, top: '50%' }}
+              />
+              <div
+                className="absolute h-full w-px"
+                style={{ backgroundColor: `${theme.stars}40`, left: '50%' }}
+              />
+            </div>
+          </div>
+
+          {/* Status Text */}
+          <div
+            className="absolute bottom-8 left-1/2 transform -translate-x-1/2 font-mono text-xs uppercase tracking-widest"
+            style={{ color: `${theme.stars}40` }}
+          >
+            {state === "working" ? "VELOCITY STABLE" : state === "break" ? "SYSTEM IDLE" : "STANDBY"}
+          </div>
+
+          {/* Corner Elements */}
+          <div
+            className="absolute top-8 left-8 w-16 h-16 border"
+            style={{ borderColor: `${theme.stars}20` }}
+          >
+            <div
+              className="absolute w-4 h-4 border-t border-l"
+              style={{ borderColor: `${theme.stars}40` }}
+            />
+            <div
+              className="absolute bottom-0 right-0 w-4 h-4 border-b border-r"
+              style={{ borderColor: `${theme.stars}40` }}
+            />
+          </div>
+          <div
+            className="absolute top-8 right-8 w-16 h-16 border"
+            style={{ borderColor: `${theme.stars}20` }}
+          >
+            <div
+              className="absolute w-4 h-4 border-t border-r"
+              style={{ borderColor: `${theme.stars}40` }}
+            />
+            <div
+              className="absolute bottom-0 left-0 w-4 h-4 border-b border-l"
+              style={{ borderColor: `${theme.stars}40` }}
             />
           </div>
         </div>
