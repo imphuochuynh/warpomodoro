@@ -97,7 +97,7 @@ export default function WarPomodoro() {
   const [showControls, setShowControls] = useState(false)
   const [showProgressHint, setShowProgressHint] = useState(false)
   const [controlsVisible, setControlsVisible] = useState(true)
-  const [ambientEnabled, setAmbientEnabled] = useState(false)
+  const [ambientEnabled, setAmbientEnabled] = useState(true)
   const [currentTheme, setCurrentTheme] = useState<ThemeKey>("CORE")
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
 
@@ -440,6 +440,11 @@ export default function WarPomodoro() {
 
             // Set initial gain
             audioGainRef.current.gain.value = CONFIG.AMBIENT_VOLUME
+
+            // Try to resume audio context immediately
+            if (audioContextRef.current.state === "suspended") {
+              audioContextRef.current.resume()
+            }
           }
         } catch (e) {
           console.log("Web Audio API not supported, falling back to standard audio")
@@ -481,11 +486,19 @@ export default function WarPomodoro() {
           // Only try to play if not already playing
           if (audioRef.current.paused) {
             audioRef.current.currentTime = 0
-            const playPromise = audioRef.current.play()
-            if (playPromise !== undefined) {
-              playPromise.catch(error => {
-                console.log("Playback failed:", error)
-              })
+            try {
+              const playPromise = audioRef.current.play()
+              if (playPromise !== undefined) {
+                playPromise.catch(error => {
+                  console.log("Playback failed:", error)
+                  // If autoplay fails, try to play on next user interaction
+                  document.addEventListener('click', () => {
+                    audioRef.current?.play()
+                  }, { once: true })
+                })
+              }
+            } catch (error) {
+              console.log("Audio play failed:", error)
             }
           }
         } catch (error) {
