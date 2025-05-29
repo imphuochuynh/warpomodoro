@@ -1126,7 +1126,7 @@ export default function WarPomodoro() {
                   </button>
                   {/* Hover tooltip */}
                   <div
-                    className="absolute font-mono opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-pre-line z-50 text-xs px-4 py-3 max-w-xs"
+                    className="absolute font-mono opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-pre-line z-50 text-xs px-4 py-3 max-w-md min-w-[250px]"
                     style={{
                       left: `${mousePos.x}px`,
                       top: `${mousePos.y - 30}px`,
