@@ -85,6 +85,8 @@ interface Star {
   hasValidPrev: boolean
   twinkle?: number
   twinkleSpeed?: number
+  twinkleIntensity?: number
+  baseSize?: number
   colorType?: "primary" | "secondary"
 }
 
@@ -131,14 +133,17 @@ export default function WarPomodoro() {
   const initStars = useCallback(() => {
     const stars: Star[] = []
     for (let i = 0; i < CONFIG.NUM_STARS; i++) {
+      const baseSize = Math.random() * 2 + 0.5 // Random base size between 0.5 and 2.5
       stars.push({
         x: (Math.random() - 0.5) * 2000,
         y: (Math.random() - 0.5) * 2000,
         z: Math.random() * 1000,
         hasValidPrev: false,
-        twinkle: Math.random() * Math.PI * 2,
-        twinkleSpeed: 0.02 + Math.random() * 0.03,
-        colorType: Math.random() > 0.7 ? "secondary" : "primary", // 30% chance for secondary color
+        twinkle: Math.random() * Math.PI * 2, // Random starting phase
+        twinkleSpeed: 0.01 + Math.random() * 0.02, // More varied speeds
+        twinkleIntensity: 0.3 + Math.random() * 0.4, // Random intensity for each star
+        baseSize: baseSize,
+        colorType: Math.random() > 0.7 ? "secondary" : "primary",
       })
     }
     starsRef.current = stars
@@ -338,10 +343,26 @@ export default function WarPomodoro() {
         // Calculate twinkling effect for workComplete state
         let size = baseSize
         let opacity = 1
-        if (state === "workComplete" && star.twinkle !== undefined) {
-          const twinkleIntensity = (Math.sin(star.twinkle) + 1) / 2
-          size = baseSize * (0.5 + twinkleIntensity * 0.8)
-          opacity = 0.3 + twinkleIntensity * 0.7
+        if (state === "workComplete" && star.twinkle !== undefined && star.twinkleIntensity !== undefined) {
+          // Use multiple sine waves with different frequencies for more natural twinkling
+          const twinkle1 = Math.sin(star.twinkle)
+          const twinkle2 = Math.sin(star.twinkle * 1.5) * 0.5
+          const twinkle3 = Math.sin(star.twinkle * 0.7) * 0.3
+          
+          // Combine the waves for a more complex pattern
+          const combinedTwinkle = (twinkle1 + twinkle2 + twinkle3) / 2.5
+          
+          // Apply the twinkling effect
+          const twinkleFactor = 0.5 + (combinedTwinkle + 1) * star.twinkleIntensity
+          size = baseSize * twinkleFactor
+          opacity = 0.4 + twinkleFactor * 0.6
+
+          // Add subtle color shift during twinkling
+          const colorShift = Math.sin(star.twinkle * 0.5) * 0.1
+          const starColorRgb = hexToRgb(starColor)
+          const [r, g, b] = starColorRgb.split(',').map(n => parseInt(n.trim()))
+          const adjustedColor = `rgb(${r + colorShift * 20}, ${g + colorShift * 20}, ${b + colorShift * 20})`
+          starColor = adjustedColor
         }
 
         // Enhanced trail drawing with motion blur effect
