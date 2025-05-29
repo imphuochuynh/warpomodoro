@@ -15,6 +15,7 @@ const CONFIG = {
   STAR_SPEED_BASE: 1.0,
   STAR_SPEED_MAX: 10.5, // Reduced for more relaxing experience
   STAR_RESPAWN_DISTANCE: 650, // How far back stars respawn (easily editable)
+  CRUISE_SPEED: 0.8, // Slightly slower than idle speed for a more relaxed feel
 
   // Animation settings
   ACCELERATION_TIME: 5 * 60 * 1000, // 5 minutes to reach max speed
@@ -100,6 +101,7 @@ export default function WarPomodoro() {
   const [ambientEnabled, setAmbientEnabled] = useState(true)
   const [currentTheme, setCurrentTheme] = useState<ThemeKey>("CORE")
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
+  const [cruiseMode, setCruiseMode] = useState(false) // New state for cruise mode
 
   // Helper function to convert hex to RGB
   const hexToRgb = (hex: string): string => {
@@ -194,34 +196,39 @@ export default function WarPomodoro() {
       // Gentle starfield movement on idle screen
       speed = CONFIG.IDLE_SPEED
     } else if (state === "working") {
-      // Calculate total elapsed time including previous work before break
-      const totalElapsed = workElapsedRef.current + elapsed
-      const progress = Math.min(totalElapsed / CONFIG.WORK_DURATION, 1)
+      if (cruiseMode) {
+        // Use constant cruise speed when in cruise mode
+        speed = CONFIG.CRUISE_SPEED
+      } else {
+        // Calculate total elapsed time including previous work before break
+        const totalElapsed = workElapsedRef.current + elapsed
+        const progress = Math.min(totalElapsed / CONFIG.WORK_DURATION, 1)
 
-      // Smooth acceleration curve that reaches max speed over configured time
-      const accelerationProgress = Math.min(totalElapsed / CONFIG.ACCELERATION_TIME, 1)
+        // Smooth acceleration curve that reaches max speed over configured time
+        const accelerationProgress = Math.min(totalElapsed / CONFIG.ACCELERATION_TIME, 1)
 
-      // Use a more aggressive curve for dramatic acceleration
-      const easedProgress = accelerationProgress * accelerationProgress * (3 - 2 * accelerationProgress)
-      const dramaticProgress = easedProgress * easedProgress
+        // Use a more aggressive curve for dramatic acceleration
+        const easedProgress = accelerationProgress * accelerationProgress * (3 - 2 * accelerationProgress)
+        const dramaticProgress = easedProgress * easedProgress
 
-      // Scale from idle speed to maximum speed
-      speed = CONFIG.IDLE_SPEED + (CONFIG.STAR_SPEED_MAX - CONFIG.IDLE_SPEED) * dramaticProgress
+        // Scale from idle speed to maximum speed
+        speed = CONFIG.IDLE_SPEED + (CONFIG.STAR_SPEED_MAX - CONFIG.IDLE_SPEED) * dramaticProgress
 
-      // Check if work session is complete (full 25 minutes)
-      if (totalElapsed >= CONFIG.WORK_DURATION) {
-        setState("workComplete")
-        setFadeOpacity(0)
-        setShowControls(false)
-        // Only count completed sessions (full 25 minutes)
-        const newCompletedSessions = completedSessions + 1
-        setCompletedSessions(newCompletedSessions)
-        localStorage.setItem("warpomodoro-completed-sessions", newCompletedSessions.toString())
-        workElapsedRef.current = 0
+        // Check if work session is complete (full 25 minutes)
+        if (totalElapsed >= CONFIG.WORK_DURATION) {
+          setState("workComplete")
+          setFadeOpacity(0)
+          setShowControls(false)
+          // Only count completed sessions (full 25 minutes)
+          const newCompletedSessions = completedSessions + 1
+          setCompletedSessions(newCompletedSessions)
+          localStorage.setItem("warpomodoro-completed-sessions", newCompletedSessions.toString())
+          workElapsedRef.current = 0
 
-        // Fade out audio if enabled
-        if (ambientEnabled) {
-          fadeOutAudio(audioRef.current)
+          // Fade out audio if enabled
+          if (ambientEnabled) {
+            fadeOutAudio(audioRef.current)
+          }
         }
       }
     } else if (state === "workComplete") {
@@ -1024,49 +1031,86 @@ export default function WarPomodoro() {
         {/* TUNNEL ACTIVE indicator */}
         {state === "working" && showControls && controlsVisible && (
           <div className="font-mono text-sm uppercase mb-4 animate-pulse" style={{ color: theme.stars, opacity: 0.8 }}>
-            TUNNEL ACTIVE
+            {cruiseMode ? "CRUISE ENGAGED" : "TUNNEL ACTIVE"}
           </div>
         )}
 
         {showButton && (
-          <button
-            onClick={handleButtonClick}
-            onMouseMove={(e) => {
-              const rect = e.currentTarget.getBoundingClientRect()
-              setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top })
-            }}
-            className="pointer-events-auto border px-5 py-2 font-mono text-sm uppercase tracking-wide transition-colors duration-200 relative group"
-            style={{
-              opacity: state === "workComplete" ? fadeOpacity : 1,
-              borderRadius: 0,
-              backgroundColor: theme.stars,
-              color: theme.background,
-              borderColor: theme.stars,
-            }}
-          >
-            {getButtonText()}
+          <div className="flex flex-col items-center gap-4">
+            <button
+              onClick={handleButtonClick}
+              onMouseMove={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect()
+                setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top })
+              }}
+              className="pointer-events-auto border px-5 py-2 font-mono text-sm uppercase tracking-wide transition-colors duration-200 relative group"
+              style={{
+                opacity: state === "workComplete" ? fadeOpacity : 1,
+                borderRadius: 0,
+                backgroundColor: theme.stars,
+                color: theme.background,
+                borderColor: theme.stars,
+              }}
+            >
+              {getButtonText()}
 
-            {/* Hover tooltip */}
+              {/* Hover tooltip */}
+              {state === "idle" && (
+                <div
+                  className="absolute font-mono opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50 text-xs px-2 py-1"
+                  style={{
+                    left: `${mousePos.x}px`,
+                    top: `${mousePos.y - 30}px`,
+                    transform: "translate(-50%, 0)",
+                    fontSize: "10px",
+                    backgroundColor: theme.stars,
+                    color: theme.background,
+                  }}
+                >
+                  BEGIN A 25-MINUTE SESSION
+                </div>
+              )}
+            </button>
+
+            {/* Cruise Mode Checkbox */}
             {state === "idle" && (
-              <div
-                className="absolute font-mono opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50 text-xs px-2 py-1"
-                style={{
-                  left: `${mousePos.x}px`,
-                  top: `${mousePos.y - 30}px`,
-                  transform: "translate(-50%, 0)",
-                  fontSize: "10px",
-                  backgroundColor: theme.stars,
-                  color: theme.background,
-                }}
-              >
-                BEGIN A 25-MINUTE SESSION
+              <div className="flex items-center gap-2 pointer-events-auto group relative">
+                <input
+                  type="checkbox"
+                  id="cruiseMode"
+                  checked={cruiseMode}
+                  onChange={(e) => setCruiseMode(e.target.checked)}
+                  className="w-4 h-4 accent-current"
+                  style={{ color: theme.stars }}
+                />
+                <label
+                  htmlFor="cruiseMode"
+                  className="font-mono text-xs uppercase tracking-wide"
+                  style={{ color: theme.stars }}
+                >
+                  CRUISE MODE
+                </label>
+                {/* Hover tooltip */}
+                <div
+                  className="absolute font-mono opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50 text-xs px-2 py-1"
+                  style={{
+                    left: `${mousePos.x}px`,
+                    top: `${mousePos.y - 30}px`,
+                    transform: "translate(-50%, 0)",
+                    fontSize: "9px",
+                    backgroundColor: theme.stars,
+                    color: theme.background,
+                  }}
+                >
+                  DISENGAGE THE TIMER AND CRUISE
+                </div>
               </div>
             )}
-          </button>
+          </div>
         )}
 
         {/* Session controls - respect visibility toggle */}
-        {showControls && state === "working" && controlsVisible && (
+        {showControls && state === "working" && controlsVisible && !cruiseMode && (
           <div
             className="flex gap-4 transition-opacity duration-1000 pointer-events-auto"
             style={{ opacity: showControls ? 1 : 0 }}
