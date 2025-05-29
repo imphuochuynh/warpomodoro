@@ -597,8 +597,8 @@ export default function WarPomodoro() {
     localStorage.setItem("warpomodoro-ambient", newAmbientEnabled.toString())
 
     if (audioRef.current) {
-      if (newAmbientEnabled && state === "working") {
-        // Resume audio if we're in a working state
+      if (newAmbientEnabled) {
+        // Resume audio if we're turning it on
         try {
           if (audioContextRef.current && audioContextRef.current.state === "suspended") {
             await audioContextRef.current.resume()
@@ -606,7 +606,8 @@ export default function WarPomodoro() {
           
           // Set gain to full volume immediately
           if (audioGainRef.current) {
-            audioGainRef.current.gain.setValueAtTime(CONFIG.AMBIENT_VOLUME, audioContextRef.current?.currentTime || 0)
+            const now = audioContextRef.current?.currentTime || 0
+            audioGainRef.current.gain.setValueAtTime(CONFIG.AMBIENT_VOLUME, now)
           } else {
             audioRef.current.volume = CONFIG.AMBIENT_VOLUME
           }
@@ -614,17 +615,16 @@ export default function WarPomodoro() {
           // Start playing if not already playing
           if (audioRef.current.paused) {
             audioRef.current.currentTime = 0
-            const playPromise = audioRef.current.play()
-            if (playPromise !== undefined) {
-              playPromise.catch(error => {
-                console.log("Playback failed:", error)
-              })
+            try {
+              await audioRef.current.play()
+            } catch (error) {
+              console.log("Playback failed:", error)
             }
           }
         } catch (error) {
           console.log("Audio resume failed:", error)
         }
-      } else if (!newAmbientEnabled) {
+      } else {
         // Fade out audio if we're turning it off
         fadeOutAudio(audioRef.current)
       }
