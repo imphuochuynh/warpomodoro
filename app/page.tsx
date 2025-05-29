@@ -118,7 +118,6 @@ export default function WarPomodoro() {
   const [currentTheme, setCurrentTheme] = useState<ThemeKey>("CORE")
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
   const [cruiseMode, setCruiseMode] = useState(false) // New state for cruise mode
-  const [showMessage, setShowMessage] = useState(false)
 
   // Helper function to convert hex to RGB
   const hexToRgb = (hex: string): string => {
@@ -239,7 +238,6 @@ export default function WarPomodoro() {
           setState("workComplete")
           setFadeOpacity(1)
           setShowControls(false)
-          setShowMessage(true)
           // Only count completed sessions (full 25 minutes)
           const newCompletedSessions = completedSessions + 1
           setCompletedSessions(newCompletedSessions)
@@ -821,7 +819,6 @@ export default function WarPomodoro() {
     setFadeOpacity(0)
     setShowControls(false)
     setShowProgressHint(false)
-    setShowMessage(false)
     workElapsedRef.current = 0 // Reset work elapsed time
   }
 
@@ -853,7 +850,6 @@ export default function WarPomodoro() {
   }
 
   const showButton = state === "idle" || state === "workComplete" || state === "breakComplete"
-  const showMessage = state === "workComplete"
 
   // Get current theme colors safely
   const theme = THEMES[currentTheme] || THEMES.CORE
@@ -1020,7 +1016,7 @@ export default function WarPomodoro() {
           </div>
         )}
 
-        {showMessage && (
+        {state === "workComplete" && (
           <div
             className="text-2xl font-mono mb-8 transition-opacity duration-1000 uppercase"
             style={{ opacity: fadeOpacity, color: theme.stars }}
