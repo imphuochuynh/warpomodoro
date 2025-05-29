@@ -1061,19 +1061,19 @@ export default function WarPomodoro() {
                   onChange={(e) => setCruiseMode(e.target.checked)}
                   className="w-4 h-4 custom-checkbox"
                   style={{ 
-                    color: theme.stars,
-                    backgroundColor: theme.stars,
-                    border: `1px solid ${theme.stars}`,
                     appearance: 'none',
                     WebkitAppearance: 'none',
                     MozAppearance: 'none',
                     position: 'relative',
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    backgroundColor: theme.background,
+                    border: `1px solid ${theme.stars}`,
+                    borderRadius: '2px'
                   }}
                 />
-                <style jsx>{`
+                <style>{`
                   .custom-checkbox:checked {
-                    background-color: ${theme.stars};
+                    background-color: ${theme.stars} !important;
                   }
                   .custom-checkbox:checked::after {
                     content: "";
