@@ -24,7 +24,7 @@ const CONFIG = {
   TRAIL_LENGTH_MULTIPLIER: 300,
 
   // Audio settings
-  AMBIENT_VOLUME: 0.8, // Easily editable ambient sound volume (0.0 to 1.0)
+  AMBIENT_VOLUME: 0.4, // Reduced from 0.8 to 0.4 (half volume)
   AUDIO_FADE_DURATION: 1.5, // Fade duration in seconds
 }
 
@@ -753,7 +753,7 @@ export default function WarPomodoro() {
     setShowControls(true) // Show controls immediately
     setShowProgressHint(false)
     setControlsVisible(true)
-    setShowProgress(true) // Show progress by default
+    setShowProgress(false) // Changed to false by default
     workElapsedRef.current = 0 // Reset for new session
   }
 
@@ -765,6 +765,7 @@ export default function WarPomodoro() {
     setShowControls(true)
     setShowProgressHint(false)
     setControlsVisible(true)
+    setShowProgress(false) // Changed to false by default
   }
 
   // Start break
@@ -891,99 +892,54 @@ export default function WarPomodoro() {
             </div>
           </div>
 
-          {/* Progress Toggle */}
-          <div
-            className="flex items-center gap-2 border px-2 py-1 group relative"
-            style={{
-              backgroundColor: theme.stars,
-              borderColor: theme.stars,
-            }}
-            onMouseMove={(e) => {
-              const rect = e.currentTarget.getBoundingClientRect()
-              setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top })
-            }}
-          >
-            <span className="font-mono text-xs uppercase opacity-70" style={{ color: theme.background }}>
-              PROG
-            </span>
-            <button
-              onClick={() => setShowProgress(!showProgress)}
-              className="w-5 h-2 border relative"
-              style={{
-                backgroundColor: theme.background,
-                borderColor: theme.background,
-              }}
-            >
-              <div
-                className={`absolute top-0 w-1.5 h-2 transition-all duration-200`}
-                style={{
-                  backgroundColor: theme.stars,
-                  left: showProgress ? "10px" : "2px",
-                }}
-              />
-            </button>
-            {/* Hover tooltip */}
+          {/* Progress Toggle - Only show when not in cruise mode */}
+          {!cruiseMode && (
             <div
-              className="absolute font-mono opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50 text-xs px-2 py-1"
+              className="flex items-center gap-2 border px-2 py-1 group relative"
               style={{
-                left: `${mousePos.x}px`,
-                top: `${mousePos.y - 30}px`,
-                transform: "translate(-50%, 0)",
-                fontSize: "9px",
                 backgroundColor: theme.stars,
-                color: theme.background,
+                borderColor: theme.stars,
+              }}
+              onMouseMove={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect()
+                setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top })
               }}
             >
-              SHOW/HIDE PROGRESS BAR
-            </div>
-          </div>
-
-          {/* Ambient Toggle */}
-          <div
-            className="flex items-center gap-2 border px-2 py-1 group relative"
-            style={{
-              backgroundColor: theme.stars,
-              borderColor: theme.stars,
-            }}
-            onMouseMove={(e) => {
-              const rect = e.currentTarget.getBoundingClientRect()
-              setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top })
-            }}
-          >
-            <span className="font-mono text-xs uppercase opacity-70" style={{ color: theme.background }}>
-              AMBT
-            </span>
-            <button
-              onClick={toggleAmbient}
-              className="w-5 h-2 border relative"
-              style={{
-                backgroundColor: theme.background,
-                borderColor: theme.background,
-              }}
-            >
-              <div
-                className={`absolute top-0 w-1.5 h-2 transition-all duration-200`}
+              <span className="font-mono text-xs uppercase opacity-70" style={{ color: theme.background }}>
+                PROG
+              </span>
+              <button
+                onClick={() => setShowProgress(!showProgress)}
+                className="w-5 h-2 border relative"
                 style={{
-                  backgroundColor: theme.stars,
-                  left: ambientEnabled ? "10px" : "2px",
+                  backgroundColor: theme.background,
+                  borderColor: theme.background,
                 }}
-              />
-            </button>
-            {/* Hover tooltip */}
-            <div
-              className="absolute font-mono opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50 text-xs px-2 py-1"
-              style={{
-                left: `${mousePos.x}px`,
-                top: `${mousePos.y - 30}px`,
-                transform: "translate(-50%, 0)",
-                fontSize: "9px",
-                backgroundColor: theme.stars,
-                color: theme.background,
-              }}
-            >
-              TOGGLE AMBIENT SOUND
+              >
+                <div
+                  className={`absolute top-0 w-1.5 h-2 transition-all duration-200`}
+                  style={{
+                    backgroundColor: theme.stars,
+                    left: showProgress ? "10px" : "2px",
+                  }}
+                />
+              </button>
+              {/* Hover tooltip */}
+              <div
+                className="absolute font-mono opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50 text-xs px-2 py-1"
+                style={{
+                  left: `${mousePos.x}px`,
+                  top: `${mousePos.y - 30}px`,
+                  transform: "translate(-50%, 0)",
+                  fontSize: "9px",
+                  backgroundColor: theme.stars,
+                  color: theme.background,
+                }}
+              >
+                SHOW/HIDE PROGRESS BAR
+              </div>
             </div>
-          </div>
+          )}
         </div>
       )}
 
@@ -1225,8 +1181,8 @@ export default function WarPomodoro() {
         )}
       </div>
 
-      {/* Progress bar with timer */}
-      {showProgress && (state === "working" || state === "break") && (
+      {/* Progress bar with timer - Only show when not in cruise mode */}
+      {!cruiseMode && showProgress && (state === "working" || state === "break") && (
         <div className="absolute bottom-0 left-0 right-0">
           {/* Timer display */}
           <div className="absolute -top-8 right-2 font-mono text-sm opacity-80" style={{ color: theme.stars }}>
