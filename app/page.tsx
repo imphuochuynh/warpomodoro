@@ -36,29 +36,29 @@ const THEMES = {
     stars: "#f5f5f5",
     starsSecondary: "#e0e0e0",
   },
-  SOFTLINE: {
-    name: "SOFTLINE",
+  SKYLIGHT: {
+    name: "SKYLIGHT",
     background: "#2d2d2d",
     stars: "#87ceeb",
     starsSecondary: "#b0e0e6",
   },
   GLINT: {
     name: "GLINT",
-    background: "#2e2e2e",
-    stars: "#d0d0d0",
-    starsSecondary: "#ff69b4",
+    background: "#1a1a1a",
+    stars: "#00ffff",
+    starsSecondary: "#ff00ff",
   },
-  STATIC: {
-    name: "STATIC",
+  TERMINAL: {
+    name: "TERMINAL",
     background: "#2e2e2e",
     stars: "#99ff99",
     starsSecondary: "#66ff66",
   },
-  FOG: {
-    name: "FOG",
-    background: "#2e2e2e",
-    stars: "#d0d0d0",
-    starsSecondary: "#999999",
+  SILT: {
+    name: "SILT",
+    background: "#3c3a37",
+    stars: "#c2b9a4",
+    starsSecondary: "#857f75",
   },
 }
 
@@ -1059,9 +1059,34 @@ export default function WarPomodoro() {
                   id="cruiseMode"
                   checked={cruiseMode}
                   onChange={(e) => setCruiseMode(e.target.checked)}
-                  className="w-4 h-4 accent-current"
-                  style={{ color: theme.stars }}
+                  className="w-4 h-4 custom-checkbox"
+                  style={{ 
+                    color: theme.stars,
+                    backgroundColor: theme.background,
+                    border: `1px solid ${theme.stars}`,
+                    appearance: 'none',
+                    WebkitAppearance: 'none',
+                    MozAppearance: 'none',
+                    position: 'relative',
+                    cursor: 'pointer'
+                  }}
                 />
+                <style jsx>{`
+                  .custom-checkbox:checked {
+                    background-color: ${theme.stars};
+                  }
+                  .custom-checkbox:checked::after {
+                    content: "";
+                    position: absolute;
+                    left: 3px;
+                    top: 1px;
+                    width: 4px;
+                    height: 8px;
+                    border: solid ${theme.background};
+                    border-width: 0 2px 2px 0;
+                    transform: rotate(45deg);
+                  }
+                `}</style>
                 <label
                   htmlFor="cruiseMode"
                   className="font-mono text-xs uppercase tracking-wide"
