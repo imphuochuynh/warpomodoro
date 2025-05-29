@@ -425,40 +425,91 @@ export default function WarPomodoro() {
   }, [])
 
   // Initialize audio with Web Audio API for better control
-  useEffect(() => {
-    const initAudio = () => {
-      if (!audioRef.current) {
-        audioRef.current = new Audio("/sounds/ambient.mp3")
-        audioRef.current.loop = true
-        audioRef.current.volume = CONFIG.AMBIENT_VOLUME
-        audioRef.current.preload = "auto"
+  const initAudio = useCallback(() => {
+    if (!audioRef.current) {
+      audioRef.current = new Audio("/sounds/ambient.mp3")
+      audioRef.current.loop = true
+      audioRef.current.volume = CONFIG.AMBIENT_VOLUME
+      audioRef.current.preload = "auto"
 
-        // Set up Web Audio API for better control over audio
-        try {
-          const AudioContext = window.AudioContext || (window as any).webkitAudioContext
-          if (AudioContext) {
-            audioContextRef.current = new AudioContext()
-            audioSourceRef.current = audioContextRef.current.createMediaElementSource(audioRef.current)
-            audioGainRef.current = audioContextRef.current.createGain()
+      // Set up Web Audio API for better control over audio
+      try {
+        const AudioContext = window.AudioContext || (window as any).webkitAudioContext
+        if (AudioContext) {
+          audioContextRef.current = new AudioContext()
+          audioSourceRef.current = audioContextRef.current.createMediaElementSource(audioRef.current)
+          audioGainRef.current = audioContextRef.current.createGain()
 
-            // Connect nodes
-            audioSourceRef.current.connect(audioGainRef.current)
-            audioGainRef.current.connect(audioContextRef.current.destination)
+          // Connect nodes
+          audioSourceRef.current.connect(audioGainRef.current)
+          audioGainRef.current.connect(audioContextRef.current.destination)
 
-            // Set initial gain
-            audioGainRef.current.gain.value = CONFIG.AMBIENT_VOLUME
-
-            // Try to resume audio context immediately
-            if (audioContextRef.current.state === "suspended") {
-              audioContextRef.current.resume()
-            }
-          }
-        } catch (e) {
-          console.log("Web Audio API not supported, falling back to standard audio")
+          // Set initial gain
+          audioGainRef.current.gain.value = CONFIG.AMBIENT_VOLUME
         }
+      } catch (e) {
+        console.log("Web Audio API not supported, falling back to standard audio")
       }
     }
+  }, [])
 
+  // Save ambient setting to localStorage
+  const toggleAmbient = async () => {
+    const newAmbientEnabled = !ambientEnabled
+    setAmbientEnabled(newAmbientEnabled)
+    localStorage.setItem("warpomodoro-ambient", newAmbientEnabled.toString())
+
+    if (newAmbientEnabled) {
+      try {
+        // Ensure audio is initialized
+        if (!audioRef.current) {
+          initAudio()
+        }
+
+        // Resume AudioContext if suspended
+        if (audioContextRef.current?.state === "suspended") {
+          await audioContextRef.current.resume()
+        }
+
+        // Reset audio to beginning
+        if (audioRef.current) {
+          audioRef.current.currentTime = 0
+
+          // Set gain or fallback volume
+          if (audioGainRef.current) {
+            const now = audioContextRef.current?.currentTime || 0
+            audioGainRef.current.gain.setValueAtTime(0, now)
+            audioGainRef.current.gain.linearRampToValueAtTime(CONFIG.AMBIENT_VOLUME, now + CONFIG.AUDIO_FADE_DURATION)
+          } else {
+            audioRef.current.volume = CONFIG.AMBIENT_VOLUME
+          }
+
+          // Try to play audio
+          const playPromise = audioRef.current.play()
+          if (playPromise !== undefined) {
+            playPromise.catch((error) => {
+              console.warn("Playback failed:", error)
+              // Try again on next user interaction
+              const retryPlay = () => {
+                if (audioRef.current && newAmbientEnabled) {
+                  audioRef.current.play().catch(() => {})
+                }
+              }
+              document.addEventListener("click", retryPlay, { once: true })
+            })
+          }
+        }
+      } catch (e) {
+        console.warn("Error resuming audio:", e)
+      }
+    } else if (audioRef.current) {
+      // Fade out audio if we're turning it off
+      fadeOutAudio(audioRef.current)
+    }
+  }
+
+  // Initialize audio on mount
+  useEffect(() => {
     initAudio()
 
     return () => {
@@ -471,7 +522,7 @@ export default function WarPomodoro() {
         audioContextRef.current.close()
       }
     }
-  }, [fadeOutAudio])
+  }, [initAudio, fadeOutAudio])
 
   // Handle ambient audio during sessions
   useEffect(() => {
@@ -596,56 +647,6 @@ export default function WarPomodoro() {
       }
     }
   }, [animate])
-
-  // Save ambient setting to localStorage
-  const toggleAmbient = async () => {
-    const newAmbientEnabled = !ambientEnabled
-    setAmbientEnabled(newAmbientEnabled)
-    localStorage.setItem("warpomodoro-ambient", newAmbientEnabled.toString())
-
-    if (audioRef.current) {
-      if (newAmbientEnabled) {
-        try {
-          // Resume AudioContext if suspended
-          if (audioContextRef.current?.state === "suspended") {
-            await audioContextRef.current.resume()
-          }
-
-          // Reset audio to beginning
-          audioRef.current.currentTime = 0
-
-          // Set gain or fallback volume
-          if (audioGainRef.current) {
-            const now = audioContextRef.current?.currentTime || 0
-            audioGainRef.current.gain.setValueAtTime(0, now)
-            audioGainRef.current.gain.linearRampToValueAtTime(CONFIG.AMBIENT_VOLUME, now + CONFIG.AUDIO_FADE_DURATION)
-          } else {
-            audioRef.current.volume = CONFIG.AMBIENT_VOLUME
-          }
-
-          // Try to play audio
-          const playPromise = audioRef.current.play()
-          if (playPromise !== undefined) {
-            playPromise.catch((error) => {
-              console.warn("Playback failed:", error)
-              // Try again on next user interaction
-              const retryPlay = () => {
-                if (audioRef.current && newAmbientEnabled) {
-                  audioRef.current.play().catch(() => {})
-                }
-              }
-              document.addEventListener("click", retryPlay, { once: true })
-            })
-          }
-        } catch (e) {
-          console.warn("Error resuming audio:", e)
-        }
-      } else {
-        // Fade out audio if we're turning it off
-        fadeOutAudio(audioRef.current)
-      }
-    }
-  }
 
   // Save theme to localStorage
   const changeTheme = (theme: ThemeKey) => {
