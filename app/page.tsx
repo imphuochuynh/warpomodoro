@@ -598,13 +598,13 @@ export default function WarPomodoro() {
 
     if (audioRef.current) {
       if (newAmbientEnabled) {
-        // Resume audio if we're turning it on
         try {
-          if (audioContextRef.current && audioContextRef.current.state === "suspended") {
+          // Resume AudioContext
+          if (audioContextRef.current?.state === "suspended") {
             await audioContextRef.current.resume()
           }
-          
-          // Set gain to full volume immediately
+
+          // Set gain or fallback volume
           if (audioGainRef.current) {
             const now = audioContextRef.current?.currentTime || 0
             audioGainRef.current.gain.setValueAtTime(CONFIG.AMBIENT_VOLUME, now)
@@ -612,17 +612,20 @@ export default function WarPomodoro() {
             audioRef.current.volume = CONFIG.AMBIENT_VOLUME
           }
 
-          // Start playing if not already playing
-          if (audioRef.current.paused) {
-            audioRef.current.currentTime = 0
-            try {
-              await audioRef.current.play()
-            } catch (error) {
-              console.log("Playback failed:", error)
-            }
+          // Try to play audio
+          const playPromise = audioRef.current.play()
+          if (playPromise !== undefined) {
+            playPromise.catch((error) => {
+              console.warn("Playback failed:", error)
+              // Try again on next user interaction
+              const retryPlay = () => {
+                audioRef.current?.play().catch(() => {})
+              }
+              document.addEventListener("click", retryPlay, { once: true })
+            })
           }
-        } catch (error) {
-          console.log("Audio resume failed:", error)
+        } catch (e) {
+          console.warn("Error resuming audio:", e)
         }
       } else {
         // Fade out audio if we're turning it off
@@ -981,7 +984,7 @@ export default function WarPomodoro() {
               className="text-xs font-mono opacity-70 max-w-md leading-relaxed uppercase mb-6"
               style={{ color: theme.stars }}
             >
-              A MINIMAL FOCUS TIMER THAT REPLACES NUMBERS WITH WORDS AND TIME WITH MOTION
+              A 25-MINUTE WARP THROUGH TIME. NO COUNTDOWN. JUST MOTION.
             </p>
 
             {/* Theme Selector */}
