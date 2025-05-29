@@ -478,14 +478,22 @@ export default function WarPomodoro() {
             audioRef.current.volume = CONFIG.AMBIENT_VOLUME
           }
 
-          audioRef.current.currentTime = 0
-          await audioRef.current.play()
+          // Only try to play if not already playing
+          if (audioRef.current.paused) {
+            audioRef.current.currentTime = 0
+            const playPromise = audioRef.current.play()
+            if (playPromise !== undefined) {
+              playPromise.catch(error => {
+                console.log("Playback failed:", error)
+              })
+            }
+          }
         } catch (error) {
           console.log("Audio play failed:", error)
         }
       } else if (audioRef.current && state !== "working") {
         // Only fade out if we're not in working state
-        if (ambientEnabled && audioRef.current.paused === false) {
+        if (ambientEnabled && !audioRef.current.paused) {
           fadeOutAudio(audioRef.current)
         }
       }
@@ -493,6 +501,21 @@ export default function WarPomodoro() {
 
     playAudio()
   }, [state, ambientEnabled, fadeOutAudio])
+
+  // Add a user interaction handler to unlock audio
+  useEffect(() => {
+    const unlockAudio = async () => {
+      if (audioContextRef.current && audioContextRef.current.state === "suspended") {
+        await audioContextRef.current.resume()
+      }
+    }
+
+    // Add click handler to document to unlock audio
+    document.addEventListener('click', unlockAudio)
+    return () => {
+      document.removeEventListener('click', unlockAudio)
+    }
+  }, [])
 
   // Reset controls visibility when leaving working state
   useEffect(() => {
