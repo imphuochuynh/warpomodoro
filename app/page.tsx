@@ -68,6 +68,12 @@ const THEMES = {
     stars: "#c2b9a4",
     starsSecondary: "#857f75",
   },
+  REDLINE: {
+    name: "REDLINE",
+    background: "#0f0f0f",
+    stars: "#ff4d4d",
+    starsSecondary: "#990000",
+  },
 }
 
 interface Star {
@@ -987,43 +993,43 @@ export default function WarPomodoro() {
                 ))}
               </div>
             </div>
-
-            {/* About Link */}
-            <div className="absolute bottom-8 pointer-events-auto group relative">
-              <button
-                className="font-mono text-xs uppercase tracking-wide transition-colors duration-200"
-                style={{ color: theme.stars }}
-                onMouseMove={(e) => {
-                  const rect = e.currentTarget.getBoundingClientRect()
-                  setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top })
-                }}
-              >
-                ABOUT
-              </button>
-              {/* Hover tooltip */}
-              <div
-                className="absolute font-mono opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-pre-line z-50 text-xs px-4 py-3 max-w-md"
-                style={{
-                  left: "50%",
-                  top: "-200px",
-                  transform: "translateX(-50%)",
-                  backgroundColor: theme.stars,
-                  color: theme.background,
-                  textAlign: "left",
-                  lineHeight: "1.6",
-                }}
-              >
-                Warpomodoro started as a weekend side project. I had the idea, and AI helped me build it.
-
-                I've always loved sci-fi — the quiet before a hyperspace jump, the hum of old tech. I wanted a timer that felt like that. Not numbers. Just motion.
-
-                It runs for 25 minutes. The stars drift, then speed up. When it ends, everything snaps back like dropping out of warp.
-
-                There's sound, themes, and even an optional progress bar if you need it. But mostly, it's just a focus tool that doesn't feel like a timer.
-              </div>
-            </div>
           </div>
         )}
+
+        {/* About Link - Moved outside the idle state container */}
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 pointer-events-auto group relative">
+          <button
+            className="font-mono text-xs uppercase tracking-wide transition-colors duration-200"
+            style={{ color: theme.stars }}
+            onMouseMove={(e) => {
+              const rect = e.currentTarget.getBoundingClientRect()
+              setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top })
+            }}
+          >
+            ABOUT
+          </button>
+          {/* Hover tooltip */}
+          <div
+            className="absolute font-mono opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-pre-line z-50 text-xs px-4 py-3 max-w-md"
+            style={{
+              left: "50%",
+              top: "-200px",
+              transform: "translateX(-50%)",
+              backgroundColor: theme.stars,
+              color: theme.background,
+              textAlign: "left",
+              lineHeight: "1.6",
+            }}
+          >
+            Warpomodoro started as a weekend side project. I had the idea, and AI helped me build it.
+
+            I've always loved sci-fi — the quiet before a hyperspace jump, the hum of old tech. I wanted a timer that felt like that. Not numbers. Just motion.
+
+            It runs for 25 minutes. The stars drift, then speed up. When it ends, everything snaps back like dropping out of warp.
+
+            There's sound, themes, and even an optional progress bar if you need it. But mostly, it's just a focus tool that doesn't feel like a timer.
+          </div>
+        </div>
 
         {showMessage && (
           <div
