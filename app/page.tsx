@@ -1030,8 +1030,24 @@ export default function WarPomodoro() {
 
         {/* TUNNEL ACTIVE indicator */}
         {state === "working" && showControls && controlsVisible && (
-          <div className="font-mono text-sm uppercase mb-4 animate-pulse" style={{ color: theme.stars, opacity: 0.8 }}>
-            {cruiseMode ? "CRUISE ENGAGED" : "TUNNEL ACTIVE"}
+          <div className="flex flex-col items-center gap-4">
+            <div className="font-mono text-sm uppercase mb-4 animate-pulse" style={{ color: theme.stars, opacity: 0.8 }}>
+              {cruiseMode ? "CRUISE ENGAGED" : "TUNNEL ACTIVE"}
+            </div>
+            {cruiseMode && (
+              <button
+                onClick={endSession}
+                className="pointer-events-auto border px-4 py-2 font-mono text-xs uppercase tracking-wide transition-colors duration-200"
+                style={{
+                  borderRadius: 0,
+                  backgroundColor: theme.stars,
+                  color: theme.background,
+                  borderColor: theme.stars,
+                }}
+              >
+                DISENGAGE CRUISE
+              </button>
+            )}
           </div>
         )}
 
