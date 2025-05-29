@@ -421,7 +421,7 @@ export default function WarPomodoro() {
   useEffect(() => {
     const initAudio = () => {
       if (!audioRef.current) {
-        audioRef.current = new Audio("/sounds/ambient.wav")
+        audioRef.current = new Audio("/sounds/ambient.mp3")
         audioRef.current.loop = true
         audioRef.current.volume = CONFIG.AMBIENT_VOLUME
         audioRef.current.preload = "auto"
@@ -745,7 +745,7 @@ export default function WarPomodoro() {
     setState("working")
     startTimeRef.current = Date.now()
     setFadeOpacity(0)
-    setShowControls(true) // Show controls immediately
+    setShowControls(true)
     setShowProgressHint(false)
     setControlsVisible(true)
   }
