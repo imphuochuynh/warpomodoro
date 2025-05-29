@@ -606,15 +606,19 @@ export default function WarPomodoro() {
     if (audioRef.current) {
       if (newAmbientEnabled) {
         try {
-          // Resume AudioContext
+          // Resume AudioContext if suspended
           if (audioContextRef.current?.state === "suspended") {
             await audioContextRef.current.resume()
           }
 
+          // Reset audio to beginning
+          audioRef.current.currentTime = 0
+
           // Set gain or fallback volume
           if (audioGainRef.current) {
             const now = audioContextRef.current?.currentTime || 0
-            audioGainRef.current.gain.setValueAtTime(CONFIG.AMBIENT_VOLUME, now)
+            audioGainRef.current.gain.setValueAtTime(0, now)
+            audioGainRef.current.gain.linearRampToValueAtTime(CONFIG.AMBIENT_VOLUME, now + CONFIG.AUDIO_FADE_DURATION)
           } else {
             audioRef.current.volume = CONFIG.AMBIENT_VOLUME
           }
@@ -626,7 +630,9 @@ export default function WarPomodoro() {
               console.warn("Playback failed:", error)
               // Try again on next user interaction
               const retryPlay = () => {
-                audioRef.current?.play().catch(() => {})
+                if (audioRef.current && newAmbientEnabled) {
+                  audioRef.current.play().catch(() => {})
+                }
               }
               document.addEventListener("click", retryPlay, { once: true })
             })
