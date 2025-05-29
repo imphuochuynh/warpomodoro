@@ -50,11 +50,11 @@ const THEMES = {
     stars: "#87ceeb",
     starsSecondary: "#b0e0e6",
   },
-  GLINT: {
-    name: "GLINT",
-    background: "#1a1a1a",
-    stars: "#00ffff",
-    starsSecondary: "#ff00ff",
+  DOTMATRIX: {
+    name: "DOTMATRIX",
+    background: "#7d8664",
+    stars: "#1a1a1a",
+    starsSecondary: "#3a3a3a",
   },
   TERMINAL: {
     name: "TERMINAL",
