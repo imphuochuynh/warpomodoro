@@ -116,6 +116,7 @@ export default function WarPomodoro() {
   const [currentTheme, setCurrentTheme] = useState<ThemeKey>("CORE")
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
   const [cruiseMode, setCruiseMode] = useState(false) // New state for cruise mode
+  const [showMessage, setShowMessage] = useState(false)
 
   // Helper function to convert hex to RGB
   const hexToRgb = (hex: string): string => {
@@ -231,8 +232,9 @@ export default function WarPomodoro() {
         // Check if work session is complete (full 25 minutes)
         if (totalElapsed >= CONFIG.WORK_DURATION) {
           setState("workComplete")
-          setFadeOpacity(0)
+          setFadeOpacity(1)
           setShowControls(false)
+          setShowMessage(true)
           // Only count completed sessions (full 25 minutes)
           const newCompletedSessions = completedSessions + 1
           setCompletedSessions(newCompletedSessions)
@@ -798,6 +800,7 @@ export default function WarPomodoro() {
     setFadeOpacity(0)
     setShowControls(false)
     setShowProgressHint(false)
+    setShowMessage(false)
     workElapsedRef.current = 0 // Reset work elapsed time
   }
 
@@ -1001,7 +1004,7 @@ export default function WarPomodoro() {
             className="text-2xl font-mono mb-8 transition-opacity duration-1000 uppercase"
             style={{ opacity: fadeOpacity, color: theme.stars }}
           >
-            YOU'RE HERE. TAKE FIVE.
+            EXIT COMPLETE. RETURNING TO ORBIT.
           </div>
         )}
 
