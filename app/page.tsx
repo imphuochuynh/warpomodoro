@@ -2,6 +2,14 @@
 
 import { useState, useRef, useEffect, useCallback } from "react"
 
+// Import Rajdhani font
+import { Rajdhani } from "next/font/google"
+
+const rajdhani = Rajdhani({
+  weight: "600",
+  subsets: ["latin"],
+})
+
 // ===== CONFIG =====
 const CONFIG = {
   // Timer settings
@@ -947,7 +955,7 @@ export default function WarPomodoro() {
       <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
         {state === "idle" && (
           <div className="text-center mb-8 px-6">
-            <h1 className="text-3xl font-mono font-bold mb-3 tracking-wider" style={{ color: theme.stars }}>
+            <h1 className="text-3xl font-bold mb-3 tracking-wider" style={{ color: theme.stars, fontFamily: rajdhani.style.fontFamily }}>
               WARPOMODORO
             </h1>
             <p
