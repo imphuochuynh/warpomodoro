@@ -591,10 +591,44 @@ export default function WarPomodoro() {
   }, [animate])
 
   // Save ambient setting to localStorage
-  const toggleAmbient = () => {
+  const toggleAmbient = async () => {
     const newAmbientEnabled = !ambientEnabled
     setAmbientEnabled(newAmbientEnabled)
     localStorage.setItem("warpomodoro-ambient", newAmbientEnabled.toString())
+
+    if (audioRef.current) {
+      if (newAmbientEnabled && state === "working") {
+        // Resume audio if we're in a working state
+        try {
+          if (audioContextRef.current && audioContextRef.current.state === "suspended") {
+            await audioContextRef.current.resume()
+          }
+          
+          // Set gain to full volume
+          if (audioGainRef.current) {
+            audioGainRef.current.gain.value = CONFIG.AMBIENT_VOLUME
+          } else {
+            audioRef.current.volume = CONFIG.AMBIENT_VOLUME
+          }
+
+          // Start playing if not already playing
+          if (audioRef.current.paused) {
+            audioRef.current.currentTime = 0
+            const playPromise = audioRef.current.play()
+            if (playPromise !== undefined) {
+              playPromise.catch(error => {
+                console.log("Playback failed:", error)
+              })
+            }
+          }
+        } catch (error) {
+          console.log("Audio resume failed:", error)
+        }
+      } else if (!newAmbientEnabled) {
+        // Fade out audio if we're turning it off
+        fadeOutAudio(audioRef.current)
+      }
+    }
   }
 
   // Save theme to localStorage
