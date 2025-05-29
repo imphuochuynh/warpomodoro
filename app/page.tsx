@@ -1062,7 +1062,7 @@ export default function WarPomodoro() {
                   className="w-4 h-4 custom-checkbox"
                   style={{ 
                     color: theme.stars,
-                    backgroundColor: theme.background,
+                    backgroundColor: theme.stars,
                     border: `1px solid ${theme.stars}`,
                     appearance: 'none',
                     WebkitAppearance: 'none',
