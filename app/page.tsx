@@ -68,6 +68,12 @@ const THEMES = {
     stars: "#c2b9a4",
     starsSecondary: "#857f75",
   },
+  REDLINE: {
+    name: "REDLINE",
+    background: "#0f0f0f",
+    stars: "#ff4d4d",
+    starsSecondary: "#990000",
+  },
 }
 
 interface Star {
