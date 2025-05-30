@@ -428,7 +428,7 @@ export default function WarPomodoro() {
 
     // Apply fade overlay for work complete state
     if (state === "workComplete" && fadeOpacity > 0) {
-      ctx.fillStyle = `rgba(0, 0, 0, ${Math.min(fadeOpacity * 0.7, 0.5)})`
+      ctx.fillStyle = `rgba(0, 0, 0, ${Math.min(fadeOpacity * 0.3, 0.2)})` // Reduced opacity from 0.7 to 0.3 and max from 0.5 to 0.2
       ctx.fillRect(0, 0, width, height)
     }
 
@@ -827,7 +827,7 @@ export default function WarPomodoro() {
       case "idle":
         return "LAUNCH"
       case "workComplete":
-        return "TAKE FIVE"
+        return "RETURN TO ORBIT"
       case "breakComplete":
         return "RETURN TO WARP"
       default:
@@ -841,7 +841,7 @@ export default function WarPomodoro() {
         startWork()
         break
       case "workComplete":
-        startBreak()
+        returnToIdle()
         break
       case "breakComplete":
         returnToIdle()
@@ -1021,7 +1021,7 @@ export default function WarPomodoro() {
             className="text-2xl font-mono mb-8 transition-opacity duration-1000 uppercase"
             style={{ opacity: fadeOpacity, color: theme.stars }}
           >
-            EXIT COMPLETE. RETURNING TO ORBIT.
+            EXIT COMPLETE.
           </div>
         )}
 
