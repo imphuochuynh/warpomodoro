@@ -428,8 +428,9 @@ export default function WarPomodoro() {
 
     // Apply fade overlay for work complete state
     if (state === "workComplete" && fadeOpacity > 0) {
-      ctx.fillStyle = `rgba(0, 0, 0, ${Math.min(fadeOpacity * 0.3, 0.2)})` // Reduced opacity from 0.7 to 0.3 and max from 0.5 to 0.2
-      ctx.fillRect(0, 0, width, height)
+      // Remove the fade overlay completely
+      // ctx.fillStyle = `rgba(0, 0, 0, ${Math.min(fadeOpacity * 0.3, 0.2)})`
+      // ctx.fillRect(0, 0, width, height)
     }
 
     animationRef.current = requestAnimationFrame(animate)
@@ -1018,8 +1019,8 @@ export default function WarPomodoro() {
 
         {state === "workComplete" && (
           <div
-            className="text-2xl font-mono mb-8 transition-opacity duration-1000 uppercase"
-            style={{ opacity: fadeOpacity, color: theme.stars }}
+            className="text-2xl font-mono mb-8 uppercase"
+            style={{ color: theme.stars }}
           >
             EXIT COMPLETE.
           </div>
@@ -1058,7 +1059,6 @@ export default function WarPomodoro() {
               }}
               className="pointer-events-auto border px-5 py-2 font-mono text-sm uppercase tracking-wide transition-colors duration-200 relative group"
               style={{
-                opacity: state === "workComplete" ? fadeOpacity : 1,
                 borderRadius: 0,
                 backgroundColor: theme.stars,
                 color: theme.background,
